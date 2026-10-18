@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="screenshots/cat-logo.jpg" alt="Audio Cat logo" width="128" />
+  <img src="Icon - banner.jpg" alt="Audio Cat logo" />
 </div>
 
 # Audio Cat
