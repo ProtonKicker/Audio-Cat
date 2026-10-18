@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Playlist lane card. Rest is nothing but a ripple; the selected card is a fill
+  step with an ink bar, because the lane has to say which list the songs below
+  belong to without reaching for the red accent, which this app reserves for LEDs
+  and fills - never for structure or text.
+-->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_selected="true">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="?attr/colorSurfaceContainerHigh" />
+                </shape>
+            </item>
+            <item android:gravity="bottom">
+                <shape android:shape="rectangle">
+                    <size android:height="2dp" />
+                    <solid android:color="@color/ink" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="@android:color/transparent" />
+        </shape>
+    </item>
+</selector>

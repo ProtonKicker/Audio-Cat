@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Night Set dark tokens: the default experience. Violet-black field, flat
+  frost panels, Signalweiss ink, one carrier red LED.
+-->
+<resources>
+    <!-- surfaces -->
+    <color name="bg">#08070A</color>            <!-- field -->
+    <color name="plate">#050507</color>         <!-- bottom plate, wells -->
+    <color name="surface">#121118</color>       <!-- row base, sheets, dialogs -->
+    <color name="surface_hi">#1A1922</color>    <!-- press -->
+    <color name="surface_max">#26252E</color>   <!-- raised / hover -->
+    <color name="hairline">#2A2933</color>      <!-- the seam -->
+    <color name="hairline_strong">#3A3945</color>
+
+    <!-- ink -->
+    <color name="ink">#EFEFEF</color>           <!-- Signalweiss -->
+    <color name="ink_soft">#B9B6C2</color>
+    <color name="ink_meta">#8F8C99</color>
+    <color name="ink_tertiary">#8F8C99</color>
+    <color name="ink_disabled">#5B5967</color>  <!-- non-text only -->
+    <color name="scrim_ink">#08070A</color>     <!-- glyph inside a lit disc -->
+
+    <color name="on_surface_variant">#B9B6C2</color>
+
+    <!-- LED / dot ramp -->
+    <color name="dot_off">#232230</color>
+    <color name="dot_dim">#4A4857</color>
+    <color name="dot_lit">#6A6876</color>
+    <color name="dot_on">#EFEFEF</color>
+
+    <!-- accent -->
+    <color name="carrier">#D71921</color>
+    <color name="alarm">#C8102E</color>
+    <color name="alarm_press">#7A0B1C</color>
+    <color name="on_alarm">#EFEFEF</color>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Docked-bar surface (mini plate, nav plate, action bars). -->
+    <attr name="audioPlateBottom" format="color" />
+
+    <declare-styleable name="RoundArtImageView">
+        <!--
+          Force the view to measure as a square of its own width. Needed where a
+          parent cannot resolve a 1:1 constraint (a scrollable column), and wrong
+          everywhere the layout already fixes both edges.
+        -->
+        <attr name="artKeepSquare" format="boolean" />
+    </declare-styleable>
+</resources>

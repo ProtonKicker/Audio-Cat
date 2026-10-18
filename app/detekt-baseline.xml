@@ -1,0 +1,116 @@
+<?xml version="1.0" ?>
+<SmellBaseline>
+  <ManuallySuppressedIssues/>
+  <CurrentIssues>
+    <ID>CyclomaticComplexMethod:LibraryScanner.kt$ScanPlanner$fun plan( candidates: List&lt;ScanCandidate&gt;, existing: Map&lt;String, Track&gt;, includedFolders: List&lt;String&gt;, excludedFolders: List&lt;String&gt;, force: Boolean, ): ScanPlan</ID>
+    <ID>CyclomaticComplexMethod:RenamePlanner.kt$RenamePlanner$fun plan( targets: List&lt;RenameTarget&gt;, pattern: RenamePattern, occupiedExisting: Set&lt;String&gt; = emptySet(), ): List&lt;RenamePlanItem&gt;</ID>
+    <ID>FunctionOnlyReturningConstant:LibraryScanner.kt$LibraryScanner.Companion$fun volumeRoot(): String</ID>
+    <ID>LongMethod:LibraryScanner.kt$LibraryScanner$private fun queryMediaStore(includeFolders: List&lt;String&gt;): List&lt;ScanCandidate&gt;</ID>
+    <ID>LongMethod:SettingsFragment.kt$SettingsFragment$private fun render()</ID>
+    <ID>LongParameterList:LibraryDatabaseTest.kt$LibraryDatabaseTest$( path: String, title: String = path.substringAfterLast('/'), artist: String? = null, unlisted: Boolean = false, size: Long = 1_000L, modified: Long = 10L, dateAdded: Long = 1L, )</ID>
+    <ID>LongParameterList:LibraryScanner.kt$LibraryScanner$( includeFolders: List&lt;String&gt;, excludeFolders: List&lt;String&gt;, force: Boolean = false, artBudget: Int = DEFAULT_ART_BUDGET, artMaxPx: Int = ArtworkStore.DEFAULT_MAX_PX, /** Applies to files seen for the first time; see [NewFilePolicy]. */ newFilePolicy: NewFilePolicy = NewFilePolicy.ADD, onProgress: (scanned: Int, total: Int) -&gt; Unit = { _, _ -&gt; }, )</ID>
+    <ID>LongParameterList:SettingsFragment.kt$SettingsFragment$( @StringRes title: Int, summary: String? = null, @DrawableRes icon: Int? = null, switch: Boolean = false, value: String? = null, chevron: Boolean = false, onClick: (() -&gt; Unit)? = null, )</ID>
+    <ID>LongParameterList:TrackDao.kt$TrackDao$( path: String, artPath: String?, sampleRate: Int, bitRate: Int, channelCount: Int, lyrics: String?, )</ID>
+    <ID>LoopWithTooManyJumpStatements:LibraryScanner.kt$LibraryScanner$while</ID>
+    <ID>LoopWithTooManyJumpStatements:LibraryScanner.kt$ScanPlanner$for</ID>
+    <ID>LoopWithTooManyJumpStatements:RenamePlanner.kt$RenamePlanner$while</ID>
+    <ID>LoopWithTooManyJumpStatements:TrackMetadataReader.kt$TrackMetadataReader$for</ID>
+    <ID>MagicNumber:ArtworkStore.kt$ArtworkStore$24</ID>
+    <ID>MagicNumber:ArtworkStore.kt$ArtworkStore.Companion$1024</ID>
+    <ID>MagicNumber:ArtworkStore.kt$ArtworkStore.Companion$256</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine$100</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine$1000</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine$1000f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine$100f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$0.5f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$1.5f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$2.5f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$2f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$3.5f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$3f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$4.5f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$4f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$5.5f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$5f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$6f</ID>
+    <ID>MagicNumber:EffectsEngine.kt$EffectsEngine.Companion$7f</ID>
+    <ID>MagicNumber:EqBandAdapter.kt$100f</ID>
+    <ID>MagicNumber:EqBandAdapter.kt$1_000</ID>
+    <ID>MagicNumber:EqBandAdapter.kt$1_000f</ID>
+    <ID>MagicNumber:FilesFragment.kt$FilesFragment$1000</ID>
+    <ID>MagicNumber:Formatters.kt$Formatters$1000</ID>
+    <ID>MagicNumber:Formatters.kt$Formatters$1000.0</ID>
+    <ID>MagicNumber:Formatters.kt$Formatters$12</ID>
+    <ID>MagicNumber:Formatters.kt$Formatters$24</ID>
+    <ID>MagicNumber:Formatters.kt$Formatters$30</ID>
+    <ID>MagicNumber:Formatters.kt$Formatters$3600</ID>
+    <ID>MagicNumber:Formatters.kt$Formatters$60</ID>
+    <ID>MagicNumber:NowPlayingSheet.kt$NowPlayingSheet$1000</ID>
+    <ID>MagicNumber:NowPlayingSheet.kt$NowPlayingSheet.&lt;no name provided&gt;$1000</ID>
+    <ID>MagicNumber:NowPlayingSheet.kt$NowPlayingSheet.&lt;no name provided&gt;$1000f</ID>
+    <ID>MagicNumber:PlaybackService.kt$PlaybackService$10_000</ID>
+    <ID>MagicNumber:PlaybackService.kt$PlaybackService$15_000</ID>
+    <ID>MagicNumber:PlaybackService.kt$PlaybackService$1_500</ID>
+    <ID>MagicNumber:PlaybackService.kt$PlaybackService$500</ID>
+    <ID>MagicNumber:PlaybackService.kt$PlaybackService$60_000</ID>
+    <ID>MagicNumber:PlayerFragment.kt$PlayerFragment$1000</ID>
+    <ID>MagicNumber:PlayerFragment.kt$PlayerFragment.&lt;no name provided&gt;$1000</ID>
+    <ID>MagicNumber:PlayerFragment.kt$PlayerFragment.&lt;no name provided&gt;$1000f</ID>
+    <ID>MagicNumber:PlaylistFragment.kt$PlaylistFragment$1000</ID>
+    <ID>MagicNumber:PlaylistFragment.kt$PlaylistFragment$3</ID>
+    <ID>MagicNumber:RenamePlanner.kt$RenamePlanner$10</ID>
+    <ID>MagicNumber:SettingsFragment.kt$SettingsFragment$1000</ID>
+    <ID>MagicNumber:SettingsFragment.kt$SettingsFragment$20</ID>
+    <ID>MagicNumber:SettingsFragment.kt$SettingsFragment$4</ID>
+    <ID>MagicNumber:SettingsFragment.kt$SettingsFragment$8</ID>
+    <ID>MagicNumber:SettingsStore.kt$SettingsStore$0.25f</ID>
+    <ID>MagicNumber:SettingsStore.kt$SettingsStore$0.5f</ID>
+    <ID>MagicNumber:SettingsStore.kt$SettingsStore$4f</ID>
+    <ID>MaxLineLength:LibraryDatabaseTest.kt$LibraryDatabaseTest$tracks.applyEnrichment("/m/a.mp3", artPath = "/cache/a.jpg", sampleRate = 44100, bitRate = 0, channelCount = 0, lyrics = "la la")</ID>
+    <ID>MaxLineLength:LibraryDatabaseTest.kt$LibraryDatabaseTest$tracks.applyEnrichment("/m/a.mp3", artPath = null, sampleRate = 44100, bitRate = 320, channelCount = 2, lyrics = null)</ID>
+    <ID>NestedBlockDepth:ScanCoordinator.kt$ScanCoordinator$private fun countMediaFiles(path: String): Int</ID>
+    <ID>ReturnCount:ArtworkStore.kt$ArtworkStore$@WorkerThread fun ensure( path: String, uri: String, isVideo: Boolean, maxPx: Int = DEFAULT_MAX_PX, metadata: TrackMetadataReader, ): String?</ID>
+    <ID>ReturnCount:EffectsEngine.kt$EffectsEngine$@Synchronized fun attach(audioSessionId: Int)</ID>
+    <ID>ReturnCount:EffectsEngine.kt$EffectsEngine$private fun currentReverb(): ReverbPreset</ID>
+    <ID>ReturnCount:FileOperations.kt$FileOperations$private fun renameOnDisk(from: String, to: String): DiskRename</ID>
+    <ID>ReturnCount:Formatters.kt$Formatters$@Suppress("DEPRECATION") fun treeUriToPath(context: Context, uri: Uri): String?</ID>
+    <ID>ReturnCount:Formatters.kt$Formatters$fun frequency(hz: Int): String</ID>
+    <ID>ReturnCount:Formatters.kt$Formatters$fun relativeTime(epochMs: Long): String</ID>
+    <ID>ReturnCount:LibraryScanner.kt$LibraryScanner$private suspend fun enrichBacklog( plan: ScanPlan, artBudget: Int, maxPx: Int, ): Int</ID>
+    <ID>ReturnCount:LibraryScanner.kt$ScanPlanner$fun isInside(path: String, folder: String): Boolean</ID>
+    <ID>ReturnCount:PlaybackQueue.kt$QueueEngine$fun jumpToTrack(queue: PlaybackQueue, trackIndex: Int): PlaybackQueue</ID>
+    <ID>ReturnCount:PlaybackQueue.kt$QueueEngine$fun next(queue: PlaybackQueue, userInitiated: Boolean = true): PlaybackQueue</ID>
+    <ID>ReturnCount:PlaybackQueue.kt$QueueEngine$fun playNext(queue: PlaybackQueue, tracks: List&lt;Track&gt;): PlaybackQueue</ID>
+    <ID>ReturnCount:PlaybackQueue.kt$QueueEngine$fun previous(queue: PlaybackQueue): PlaybackQueue</ID>
+    <ID>ReturnCount:PlaybackQueue.kt$QueueEngine$fun removeAt(queue: PlaybackQueue, playOrderPosition: Int): PlaybackQueue</ID>
+    <ID>ReturnCount:PlaybackQueue.kt$QueueEngine$fun setShuffle(queue: PlaybackQueue, enabled: Boolean): PlaybackQueue</ID>
+    <ID>ReturnCount:PlaybackService.kt$PlaybackService$fun jumpToQueuePosition(playOrderPosition: Int): Boolean</ID>
+    <ID>ReturnCount:PlaybackService.kt$PlaybackService$private fun applyCursor(next: PlaybackQueue)</ID>
+    <ID>ReturnCount:PlaylistDetailSheet.kt$PlaylistDetailSheet.&lt;no name provided&gt;$override fun onMove( recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder, ): Boolean</ID>
+    <ID>ReturnCount:RenamePlanner.kt$RenamePlanner$fun validate(plan: List&lt;RenamePlanItem&gt;, existingPaths: Set&lt;String&gt;): String?</ID>
+    <ID>ReturnCount:RenamePlanner.kt$RenamePlanner$private fun applyReplacements(base: String, pattern: RenamePattern): String</ID>
+    <ID>TooGenericExceptionCaught:ArtworkStore.kt$ArtworkStore$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:EffectsEngine.kt$EffectsEngine$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:FileOperations.kt$FileOperations$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:ScanCoordinator.kt$ScanCoordinator$e: Exception</ID>
+    <ID>TooGenericExceptionCaught:TrackMetadataReader.kt$TrackMetadataReader$e: Exception</ID>
+    <ID>TooManyFunctions:ArtworkStore.kt$ArtworkStore</ID>
+    <ID>TooManyFunctions:EffectPresetsStore.kt$EffectPresetsStore</ID>
+    <ID>TooManyFunctions:EffectsEngine.kt$EffectsEngine</ID>
+    <ID>TooManyFunctions:EffectsFragment.kt$EffectsFragment : Fragment</ID>
+    <ID>TooManyFunctions:FileOperations.kt$FileOperations</ID>
+    <ID>TooManyFunctions:FilesFragment.kt$FilesFragment : Fragment</ID>
+    <ID>TooManyFunctions:PlaybackQueue.kt$QueueEngine</ID>
+    <ID>TooManyFunctions:PlaybackService.kt$PlaybackService : MediaSessionService</ID>
+    <ID>TooManyFunctions:PlayerConnection.kt$PlayerConnection</ID>
+    <ID>TooManyFunctions:PlaylistDao.kt$PlaylistTrackDao</ID>
+    <ID>TooManyFunctions:PlaylistFragment.kt$PlaylistFragment : Fragment</ID>
+    <ID>TooManyFunctions:ScanCoordinator.kt$ScanCoordinator</ID>
+    <ID>TooManyFunctions:SettingsFragment.kt$SettingsFragment : Fragment</ID>
+    <ID>TooManyFunctions:TrackDao.kt$TrackDao</ID>
+    <ID>UnusedParameter:Formatters.kt$Formatters$context: Context</ID>
+    <ID>UnusedParameter:LibraryScanner.kt$LibraryScanner$includeFolders: List&lt;String&gt;</ID>
+    <ID>UnusedParameter:SettingsFragment.kt$SettingsFragment$checkedIndex: Int</ID>
+    <ID>UnusedPrivateProperty:LibraryScanner.kt$private const val TAG = "LibraryScanner"</ID>
+  </CurrentIssues>
+</SmellBaseline>

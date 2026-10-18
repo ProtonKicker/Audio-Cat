@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Audio Cat mark: two eyes and a mouth. Three shapes of ink.
+
+  No ears, no nose, no muzzle - the mouth is the whole expression, and at 48dp
+  anything more turns to noise. The point faces down: an upward caret reads as a
+  frown. Everything sits inside the 66dp safe circle that launchers crop to.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#0A0A0C"
+        android:pathData="M32,36h12v12h-12zM64,36h12v12h-12z" />
+    <path
+        android:pathData="M42,60L54,72L66,60"
+        android:strokeColor="#0A0A0C"
+        android:strokeLineCap="square"
+        android:strokeLineJoin="miter"
+        android:strokeWidth="7" />
+</vector>

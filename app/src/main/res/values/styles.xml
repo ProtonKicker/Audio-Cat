@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The type ramp. One ramp, hierarchy by size/weight/space — never by colour.
+  Every appearance declares its weight explicitly.
+-->
+<resources>
+
+    <style name="TextAppearance.AudioCat.Display" parent="android:TextAppearance">
+        <item name="android:fontFamily">@font/geist</item>
+        <item name="android:textSize">36sp</item>
+        <item name="android:fontWeight">300</item>
+        <item name="android:letterSpacing">-0.02</item>
+        <item name="android:lineSpacingExtra">0dp</item>
+    </style>
+
+    <style name="TextAppearance.AudioCat.Title" parent="android:TextAppearance">
+        <item name="android:fontFamily">@font/geist</item>
+        <item name="android:textSize">22sp</item>
+        <item name="android:fontWeight">600</item>
+        <item name="android:letterSpacing">-0.01</item>
+    </style>
+
+    <style name="TextAppearance.AudioCat.RowTitle" parent="android:TextAppearance">
+        <item name="android:fontFamily">@font/geist</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontWeight">500</item>
+        <item name="android:letterSpacing">0</item>
+    </style>
+
+    <style name="TextAppearance.AudioCat.Body" parent="android:TextAppearance">
+        <item name="android:fontFamily">@font/geist</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:fontWeight">400</item>
+    </style>
+
+    <style name="TextAppearance.AudioCat.Micro" parent="android:TextAppearance">
+        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:fontWeight">500</item>
+        <item name="android:letterSpacing">0.10</item>
+        <item name="android:textAllCaps">true</item>
+    </style>
+
+    <style name="TextAppearance.AudioCat.Ledger" parent="android:TextAppearance">
+        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:fontWeight">400</item>
+        <item name="android:letterSpacing">-0.04</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+
+    <!-- Sentence-case mono for descriptions and secondary lines. -->
+    <style name="TextAppearance.AudioCat.Caption" parent="android:TextAppearance">
+        <item name="android:fontFamily">@font/geist_mono</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:fontWeight">400</item>
+        <item name="android:letterSpacing">0.02</item>
+    </style>
+
+    <style name="TextAppearance.AudioCat.Readout" parent="android:TextAppearance">
+        <item name="android:fontFamily">@font/geist_pixel_grid</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:fontWeight">400</item>
+        <item name="android:letterSpacing">0.06</item>
+    </style>
+
+    <!-- Catch-all so no view silently renders the platform face. -->
+    <style name="Widget.AudioCat.TextView" parent="android:Widget.TextView">
+        <item name="android:fontFamily">@font/geist</item>
+        <item name="android:textAppearance">@style/TextAppearance.AudioCat.Body</item>
+    </style>
+</resources>

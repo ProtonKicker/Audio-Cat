@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/effectsRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:clipToPadding="false"
+        android:paddingBottom="16dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/tab_effects"
+                android:textAppearance="?attr/textAppearanceHeadlineSmall" />
+
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/switchEffects"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/effects_enabled" />
+
+            <TextView
+                android:id="@+id/effectsUnavailable"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="@string/effects_unavailable"
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorError"
+                android:visibility="gone" />
+
+            <!-- Presets -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/effects_presets"
+                android:textAppearance="@style/TextAppearance.AudioCat.SectionHeader" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/presetList"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:nestedScrollingEnabled="false"
+                android:orientation="horizontal"
+                app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSavePreset"
+                style="@style/Widget.Material3.Button.TextButton.Icon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text="@string/effects_save_preset"
+                app:icon="@drawable/ic_save" />
+
+            <!-- Equaliser -->
+            <TextView
+                android:id="@+id/eqHeader"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:text="@string/effects_equalizer"
+                android:textAppearance="@style/TextAppearance.AudioCat.SectionHeader" />
+
+            <TextView
+                android:id="@+id/eqSummary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?android:attr/textColorSecondary" />
+
+            <!--
+              Twelve vertical sliders do not fit on a phone, so the bank scrolls
+              horizontally. The container is populated from EffectsEngine's band
+              descriptors so the labels always match the real frequencies.
+            -->
+            <HorizontalScrollView
+                android:id="@+id/eqScroll"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:fillViewport="false"
+                android:scrollbars="none">
+
+                <LinearLayout
+                    android:id="@+id/eqBands"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal" />
+            </HorizontalScrollView>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEqReset"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/effects_flat" />
+
+            <!-- Bass boost -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/effects_bass"
+                android:textAppearance="@style/TextAppearance.AudioCat.SectionHeader" />
+
+            <SeekBar
+                android:id="@+id/bassSeek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="100" />
+
+            <!-- Reverb -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/effects_reverb"
+                android:textAppearance="@style/TextAppearance.AudioCat.SectionHeader" />
+
+            <com.google.android.material.chip.ChipGroup
+                android:id="@+id/reverbChips"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:singleSelection="true" />
+
+            <!-- Speed and pitch -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="@string/effects_speed"
+                android:textAppearance="@style/TextAppearance.AudioCat.SectionHeader" />
+
+            <TextView
+                android:id="@+id/speedValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <SeekBar
+                android:id="@+id/speedSeek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="100" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="@string/effects_pitch"
+                android:textAppearance="@style/TextAppearance.AudioCat.SectionHeader" />
+
+            <TextView
+                android:id="@+id/pitchValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+
+            <SeekBar
+                android:id="@+id/pitchSeek"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:max="100" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSpeedReset"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                android:text="@string/effects_flat" />
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

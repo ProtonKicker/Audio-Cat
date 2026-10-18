@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Default cover for a track with no artwork anywhere: a stepped plate with the
+  note glyph centred, and nothing else.
+
+  Deliberately no hairline border. A vector's stroke width is in viewport units,
+  so it scales with the view: the same 1.5-unit rule is a whisper at 40dp in a
+  row and a band at 312dp on the player. Depth here comes from the fill step
+  alone, which is how the rest of the app expresses it, and one drawable then
+  reads correctly at every size it is used at.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="100dp"
+    android:height="100dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <path
+        android:fillColor="?attr/colorSurfaceContainerHigh"
+        android:pathData="M0,0h100v100h-100z" />
+
+    <group
+        android:scaleX="1.0417"
+        android:scaleY="1.0417"
+        android:translateX="37.5"
+        android:translateY="37.5">
+        <path
+            android:fillColor="?attr/colorControlNormal"
+            android:pathData="M12,3c-4.97,0 -9,4.03 -9,9v7c0,1.1 0.9,2 2,2h4v-8H5v-1c0,-3.87 3.13 -7 7,-7s7,3.13 7,7v1h-4v8h4c1.1,0 2,-0.9 2,-2v-7c0,-4.97 -4.03,-9 -9,-9z" />
+    </group>
+</vector>

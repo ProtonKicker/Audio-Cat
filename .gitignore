@@ -1,0 +1,16 @@
+# Build caches and machine-local config — never commit these
+.gradle-home/
+.android-home/
+.gradle/
+.kotlin/
+.scratch/
+build/
+app/build/
+local.properties
+keystore/
+
+# macOS
+.DS_Store
+
+# Agent session transcripts and workflow runs
+.qoder/

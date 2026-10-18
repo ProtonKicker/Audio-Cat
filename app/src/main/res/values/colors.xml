@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Night Set tokens. One canonical name set; values-night/colors.xml overrides
+  the hexes for dark. Surfaces are violet-ash (never zero-chroma), depth comes
+  from fill steps + hairlines, and ink carries structure while red carries only
+  signal. No DynamicColors anywhere: the palette IS the identity.
+-->
+<resources>
+    <color name="ic_launcher_background">#FFFFFF</color>
+
+    <!-- surfaces -->
+    <color name="bg">#F2F1F5</color>            <!-- paper -->
+    <color name="plate">#FBFAFD</color>         <!-- raised frost: sheets, dialogs, bottom plate -->
+    <color name="surface">#F2F1F5</color>       <!-- list row base -->
+    <color name="surface_hi">#E7E6EC</color>    <!-- nav, selection bar, wells -->
+    <color name="surface_max">#EAE8EF</color>   <!-- sustained press -->
+    <color name="hairline">#D3D1DA</color>      <!-- 0.67dp rules, chip strokes -->
+    <color name="hairline_strong">#C7C5CF</color>
+
+    <!-- ink -->
+    <color name="ink">#161317</color>           <!-- structure: primary text, filled objects -->
+    <color name="ink_soft">#3C3A44</color>      <!-- resting row titles -->
+    <color name="ink_meta">#5E5C68</color>      <!-- small text and icons -->
+    <color name="ink_tertiary">#63616E</color>  <!-- nav-inactive labels -->
+    <color name="ink_disabled">#8B8995</color>  <!-- non-text only -->
+    <color name="scrim_ink">#161317</color>     <!-- glyph inside a lit ink object -->
+
+    <color name="on_surface_variant">#5E5C68</color>
+
+    <!-- LED / dot ramp — non-text UI state -->
+    <color name="dot_off">#DAD8E1</color>
+    <color name="dot_dim">#9C9AA6</color>
+    <color name="dot_lit">#8B8995</color>
+    <color name="dot_on">#161317</color>
+
+    <!-- accent: red is LED / fills / travelled scrubber / destructive ONLY -->
+    <color name="carrier">#D71921</color>
+    <color name="alarm">#C8102E</color>
+    <color name="alarm_press">#9A0C23</color>
+    <color name="on_alarm">#FBFAFD</color>
+</resources>

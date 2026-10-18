@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!--
+      Night Set theme. colorPrimary is structural ink, not an accent — that is
+      what stops Material painting red/orange blobs across the UI. Depth is
+      fill steps + hairlines, so elevation overlays are off entirely.
+    -->
+    <style name="Theme.AudioCat" parent="Theme.Material3.DayNight.NoActionBar">
+        <!-- surfaces -->
+        <item name="android:colorBackground">@color/bg</item>
+        <item name="colorSurface">@color/bg</item>
+        <item name="colorSurfaceContainerLowest">@color/plate</item>
+        <item name="colorSurfaceContainerLow">@color/plate</item>
+        <item name="colorSurfaceContainer">@color/surface</item>
+        <item name="colorSurfaceContainerHigh">@color/surface_hi</item>
+        <item name="colorSurfaceContainerHighest">@color/surface_max</item>
+        <item name="colorSurfaceBright">@color/surface_max</item>
+
+        <!-- ink -->
+        <item name="colorOnBackground">@color/ink</item>
+        <item name="colorOnSurface">@color/ink</item>
+        <item name="colorOnSurfaceVariant">@color/on_surface_variant</item>
+        <item name="colorOnSurfaceInverse">@color/plate</item>
+        <item name="colorControlNormal">@color/ink_meta</item>
+
+        <!-- structure: primary IS ink -->
+        <item name="colorPrimary">@color/ink</item>
+        <item name="colorOnPrimary">@color/plate</item>
+        <item name="colorPrimaryContainer">@color/ink</item>
+        <item name="colorOnPrimaryContainer">@color/plate</item>
+        <item name="colorSecondary">@color/ink_soft</item>
+        <item name="colorOnSecondary">@color/plate</item>
+        <item name="colorSecondaryContainer">@color/surface_hi</item>
+        <item name="colorOnSecondaryContainer">@color/ink_soft</item>
+        <item name="colorTertiary">@color/ink_meta</item>
+        <item name="colorOnTertiary">@color/plate</item>
+        <item name="colorTertiaryContainer">@color/surface_hi</item>
+        <item name="colorOnTertiaryContainer">@color/ink_meta</item>
+
+        <!-- outlines + error -->
+        <item name="colorOutline">@color/hairline</item>
+        <item name="colorOutlineVariant">@color/hairline_strong</item>
+        <item name="colorError">@color/alarm</item>
+        <item name="colorOnError">@color/on_alarm</item>
+
+        <!-- flat depth: fill + hairline, never shadows -->
+        <item name="elevationOverlayEnabled">false</item>
+        <item name="android:elevation">0dp</item>
+
+        <!-- 0dp everywhere except perfect circles -->
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.AudioCat.None</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.AudioCat.None</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.AudioCat.None</item>
+
+        <!-- one type ramp: every M3 role maps onto the Audio Cat styles -->
+        <item name="android:textViewStyle">@style/Widget.AudioCat.TextView</item>
+        <item name="textAppearanceDisplayLarge">@style/TextAppearance.AudioCat.Display</item>
+        <item name="textAppearanceDisplayMedium">@style/TextAppearance.AudioCat.Display</item>
+        <item name="textAppearanceDisplaySmall">@style/TextAppearance.AudioCat.Title</item>
+        <item name="textAppearanceHeadlineLarge">@style/TextAppearance.AudioCat.Display</item>
+        <item name="textAppearanceHeadlineMedium">@style/TextAppearance.AudioCat.Display</item>
+        <item name="textAppearanceHeadlineSmall">@style/TextAppearance.AudioCat.Display</item>
+        <item name="textAppearanceTitleLarge">@style/TextAppearance.AudioCat.Title</item>
+        <item name="textAppearanceTitleMedium">@style/TextAppearance.AudioCat.Title</item>
+        <item name="textAppearanceTitleSmall">@style/TextAppearance.AudioCat.Micro</item>
+        <item name="textAppearanceBodyLarge">@style/TextAppearance.AudioCat.Body</item>
+        <item name="textAppearanceBodyMedium">@style/TextAppearance.AudioCat.Body</item>
+        <item name="textAppearanceBodySmall">@style/TextAppearance.AudioCat.Caption</item>
+        <item name="textAppearanceLabelLarge">@style/TextAppearance.AudioCat.RowTitle</item>
+        <item name="textAppearanceLabelMedium">@style/TextAppearance.AudioCat.Micro</item>
+        <item name="textAppearanceLabelSmall">@style/TextAppearance.AudioCat.Micro</item>
+
+        <!-- plate attribute for docked bars -->
+        <item name="audioPlateBottom">@color/plate</item>
+
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="m">@bool/light_status_bar</item>
+        <item name="android:enforceStatusBarContrast" tools:targetApi="q">false</item>
+        <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
+    </style>
+
+    <!--
+      Distinct entry points kept for the Settings theme override; the actual
+      flip is done via AppCompatDelegate.setDefaultNightMode.
+    -->
+    <style name="Theme.AudioCat.Light" parent="Theme.AudioCat">
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <style name="Theme.AudioCat.Dark" parent="Theme.AudioCat">
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+
+    <style name="ShapeAppearance.AudioCat.None" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">0dp</item>
+    </style>
+
+    <style name="Widget.AudioCat.SeekBar" parent="Widget.AppCompat.SeekBar">
+        <item name="android:maxHeight">3dp</item>
+        <item name="android:minHeight">3dp</item>
+    </style>
+
+    <style name="TextAppearance.AudioCat.SectionHeader" parent="TextAppearance.Material3.TitleSmall">
+        <item name="android:textColor">@color/ink_meta</item>
+        <item name="android:letterSpacing">0.10</item>
+        <item name="android:textAllCaps">true</item>
+        <item name="android:textSize">11sp</item>
+    </style>
+</resources>

@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mini player. Tapping the bar opens Now Playing; the transport buttons are
+  sized to the 48dp minimum touch target so they are reachable one-handed.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/miniPlayerRoot"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="?attr/colorSurfaceContainerHigh"
+    android:clickable="true"
+    android:focusable="true"
+    android:gravity="center_vertical"
+    android:minHeight="64dp"
+    android:orientation="horizontal"
+    android:paddingStart="12dp"
+    android:paddingEnd="4dp">
+
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/miniArt"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:contentDescription="@string/action_play"
+        android:scaleType="centerCrop"
+        android:src="@drawable/art_default"
+        app:shapeAppearanceOverlay="@style/ShapeAppearance.Material3.Corner.Small" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="12dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/miniTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="@string/now_playing_nothing"
+            android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+        <TextView
+            android:id="@+id/miniArtist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:textAppearance="?attr/textAppearanceBodySmall"
+            android:textColor="?android:attr/textColorSecondary" />
+    </LinearLayout>
+
+    <ImageButton
+        android:id="@+id/miniPrevious"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_previous"
+        android:src="@drawable/ic_previous"
+        app:tint="?attr/colorOnSurface" />
+
+    <ImageButton
+        android:id="@+id/miniPlayPause"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_play"
+        android:src="@drawable/ic_play"
+        app:tint="?attr/colorOnSurface" />
+
+    <ImageButton
+        android:id="@+id/miniNext"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_next"
+        android:src="@drawable/ic_next"
+        app:tint="?attr/colorOnSurface" />
+</LinearLayout>
