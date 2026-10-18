@@ -69,6 +69,17 @@
                 android:contentDescription="@string/playlist_new"
                 android:src="@drawable/ic_add"
                 app:tint="?attr/colorOnSurfaceVariant" />
+
+            <!-- Quick playlist picker: a compact line-by-line list of every
+                 playlist that collapses the horizontal lane into a dropdown. -->
+            <ImageButton
+                android:id="@+id/btnPlaylistPicker"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/playlist_picker"
+                android:src="@drawable/ic_queue"
+                app:tint="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
 
         <com.google.android.material.card.MaterialCardView

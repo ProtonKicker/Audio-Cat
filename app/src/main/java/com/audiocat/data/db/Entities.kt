@@ -18,6 +18,10 @@ data class Playlist(
 
     @ColumnInfo(name = "created_at")
     val createdAt: Long = System.currentTimeMillis(),
+
+    /** Drag-and-drop position of this card in the horizontal lane. */
+    @ColumnInfo(name = "lane_order")
+    val laneOrder: Int = Int.MAX_VALUE,
 )
 
 /**

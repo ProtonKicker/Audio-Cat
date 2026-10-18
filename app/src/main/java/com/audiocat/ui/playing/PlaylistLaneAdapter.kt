@@ -2,6 +2,7 @@ package com.audiocat.ui.playing
 
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
@@ -43,11 +44,14 @@ sealed class LaneItem {
  *
  * Tapping a card chooses what the list below shows; the selected card is the one
  * whose id matches [selectedId]. A long press opens the card's actions, which is
- * the only place a playlist can be renamed or deleted.
+ * the only place a playlist can be renamed or deleted. Dragging the handle at
+ * the leading edge of a card reorders the lane — one card can ride another to
+ * any position, and the new order is handed back through [onMoved].
  */
 class PlaylistLaneAdapter(
     private val onClick: (LaneItem) -> Unit,
     private val onLongClick: (LaneItem) -> Unit,
+    private val onMoved: (from: Int, to: Int) -> Unit = { _, _ -> },
     private var selectedId: Long? = null,
 ) : ListAdapter<LaneItem, PlaylistLaneAdapter.LaneViewHolder>(DIFF) {
 
@@ -59,10 +63,26 @@ class PlaylistLaneAdapter(
         notifyItemRangeChanged(0, itemCount)
     }
 
+    /** Drag handle attached by [androidx.recyclerview.widget.ItemTouchHelper]. */
+    var onStartDrag: ((RecyclerView.ViewHolder) -> Unit)? = null
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LaneViewHolder =
         LaneViewHolder(ItemPlaylistLaneBinding.inflate(LayoutInflater.from(parent.context), parent, false))
 
     override fun onBindViewHolder(holder: LaneViewHolder, position: Int) = holder.bind(getItem(position))
+
+    /** Local reorder that tracks the finger without waiting for the owner. */
+    fun moveLaneItem(from: Int, to: Int) {
+        val current = currentList.toMutableList()
+        if (from !in current.indices || to !in current.indices || from == to) return
+        // The "All songs" card is the universe scope — it always stays first.
+        if (from == 0 || to == 0) return
+        val moved = current.removeAt(from)
+        current.add(to, moved)
+        submitList(current)
+    }
+
+    fun committedOrder(): List<LaneItem> = currentList
 
     inner class LaneViewHolder(
         private val binding: ItemPlaylistLaneBinding,
@@ -81,6 +101,14 @@ class PlaylistLaneAdapter(
                     onLongClick(getItem(position))
                     true
                 }
+            }
+            // Drag only begins on the handle, not the whole card, so taps keep
+            // selecting and the row does not fight the touch for ownership.
+            binding.laneDragHandle.setOnTouchListener { _, event ->
+                if (event.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
+                    onStartDrag?.invoke(this)
+                }
+                false
             }
         }
 
@@ -102,6 +130,8 @@ class PlaylistLaneAdapter(
                 androidx.core.content.ContextCompat.getColor(context, R.color.ink_meta),
             )
             binding.laneRoot.isSelected = item.playlistId == selectedId
+            // "All songs" is pinned to the front; it has no business being dragged.
+            binding.laneDragHandle.isVisible = item !is LaneItem.All
         }
     }
 

@@ -69,7 +69,8 @@ class PlaybackService : MediaSessionService() {
     private var session: MediaSession? = null
 
     /** Authoritative queue state; every mutation flows through [updateQueue]. */
-    private var queue: PlaybackQueue = PlaybackQueue()
+    internal var queue: PlaybackQueue = PlaybackQueue()
+        private set
 
     /** Audio effects bound to the player's output session. */
     val effects = EffectsEngine()
@@ -324,8 +325,21 @@ class PlaybackService : MediaSessionService() {
     fun setShuffle(enabled: Boolean) {
         queue = QueueEngine.setShuffle(queue, enabled)
         val player = player ?: return
-        val position = player.currentPosition
-        pushQueueToPlayer(startPositionMs = position, preservePosition = true, autoPlay = player.isPlaying)
+        // Reorder the player's media items in place to match the new play order.
+        // moveMediaItem() only updates playlist indices and never re-prepares the
+        // player, so the currently playing track keeps flowing — unlike
+        // setMediaItems() + prepare(), which tears down the decoder pipeline and
+        // produces an audible dropout of a few hundred ms while it rebuilds.
+        val wantedPaths = queue.orderedTracks.map { it.path }
+        val currentPaths = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
+        if (currentPaths.size != wantedPaths.size) {
+            // Item count differs (e.g. a fresh queue landed between model updates);
+            // fall back to a full rebuild for correctness.
+            val position = player.currentPosition
+            pushQueueToPlayer(startPositionMs = position, preservePosition = true, autoPlay = player.isPlaying)
+            return
+        }
+        reorderPlayerPaths(currentPaths, wantedPaths, player)
     }
 
     fun setRepeat(mode: RepeatMode) {
@@ -338,28 +352,52 @@ class PlaybackService : MediaSessionService() {
     }
 
     fun removeFromQueue(playOrderPosition: Int) {
+        val player = player ?: return
         val removedPath = queue.order.getOrNull(playOrderPosition)?.let { queue.tracks.getOrNull(it) }?.path
         queue = QueueEngine.removeAt(queue, playOrderPosition)
         if (queue.isEmpty) {
-            player?.clearMediaItems()
-            player?.stop()
+            player.clearMediaItems()
+            player.stop()
             return
         }
-        // Must be read before the items are replaced: afterwards the player is
-        // already showing the track that took the removed one's slot.
-        val removedWasPlaying = removedPath != null && player?.currentMediaItem?.mediaId == removedPath
-        pushQueueToPlayer(preservePosition = true)
-        if (removedWasPlaying) {
-            // Deleting what is playing means "move on", so the switch also plays.
-            player?.seekTo(queue.cursor.coerceAtLeast(0), 0L)
-            player?.play()
-            onTrackChanged()
+        val removedWasPlaying = removedPath != null && player.currentMediaItem?.mediaId == removedPath
+        if (removedWasPlaying || playOrderPosition !in 0 until player.mediaItemCount) {
+            // Removing the currently playing item changes what the player shows,
+            // so the cursor has to be re-applied on a fresh item list. Also fall
+            // back to a rebuild if the play-order position is out of range.
+            pushQueueToPlayer(preservePosition = true)
+            if (removedWasPlaying) {
+                // Deleting what is playing means "move on", so the switch also plays.
+                player.seekTo(queue.cursor.coerceAtLeast(0), 0L)
+                player.play()
+                onTrackChanged()
+            }
+            return
+        }
+        // Removing a track that is not playing: delete it from the player's list
+        // in place. removeMediaItem does not re-prepare playback and keeps the
+        // current item flowing, which preserves seamless playback during cleanup.
+        val newItemCount = player.mediaItemCount - 1
+        player.removeMediaItem(playOrderPosition)
+        // Guard against the player's item count disagreeing with the queue.
+        if (player.mediaItemCount != newItemCount) {
+            pushQueueToPlayer(preservePosition = true)
         }
     }
 
     fun moveInQueue(from: Int, to: Int) {
+        if (from == to) return
         queue = QueueEngine.move(queue, from, to)
-        pushQueueToPlayer(preservePosition = true)
+        val player = player ?: return
+        // Same rationale as setShuffle(): moving items in the player's list with
+        // moveMediaItem does not re-prepare playback, so the audio keeps flowing
+        // while the queue list is visibly reordered by a drag.
+        val size = player.mediaItemCount
+        if (from !in 0 until size || to !in 0 until size) {
+            pushQueueToPlayer(preservePosition = true)
+            return
+        }
+        player.moveMediaItem(from, to)
     }
 
     fun clearQueue() {
@@ -414,6 +452,31 @@ class PlaybackService : MediaSessionService() {
         player.setMediaItems(items, queue.cursor.coerceAtLeast(0), previousPosition)
         player.prepare()
         if (autoPlay || wasPlaying) player.play()
+    }
+
+    /**
+     * Realises a target item order using only [Player.moveMediaItem], which never
+     * re-prepares the player and therefore cannot produce an audible gap.
+     *
+     * Walks the target list; for each slot it finds where the wanted item
+     * currently sits and pulls it into place with a single move. At most `n - 1`
+     * moves are needed because the last item falls into place automatically.
+     */
+    private fun reorderPlayerPaths(current: List<String>, wanted: List<String>, player: ExoPlayer) {
+        if (current.size <= 1) return
+        // A working copy so indices stay consistent as items shift beneath us.
+        val working = current.toMutableList()
+        for (target in working.indices) {
+            val id = wanted.getOrNull(target) ?: continue
+            val from = working.indexOf(id)
+            if (from == -1 || from == target) continue
+            if (from < 0 || from >= player.mediaItemCount || target < 0 || target >= player.mediaItemCount) {
+                continue
+            }
+            player.moveMediaItem(from, target)
+            working.removeAt(from)
+            working.add(target, id)
+        }
     }
 
     /** Moves the player to the queue's current cursor. */

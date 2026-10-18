@@ -1,7 +1,7 @@
 # Audio Cat — 任务板与项目状态
 
 > 最后更新：2026-10-17  
-> 当前版本：1.1.1（commit `c7f024d`）  
+> 当前版本：1.1.2（开发中）  
 > 包名：`com.audiocat.debug`（applicationIdSuffix `.debug`）
 
 ---
@@ -10,7 +10,7 @@
 
 Audio Cat 是一款轻量级、完全离线的 Android 音频播放器，专为从本地视频文件中提取音频而设计。不解码视频流，只解码音频，节省 CPU/GPU/电量。支持 MP3/FLAC/AAC/OGG 等音频格式和 MP4/MKV/AVI/MOV/WebM 等视频容器（仅提取音频）。
 
-- 4 个底部导航 Tab：正在播放 / 文件 / 音效 / 设置
+- 4 个底部导航 Tab：正在播放 / 播放列表 / 文件 / 设置
 - ExoPlayer (Media3 1.11.1) 音频播放
 - Room 数据库 + SharedPreferences
 - 12 段参数 EQ、混响、低音增强、音高/速度控制
@@ -21,8 +21,7 @@ Audio Cat 是一款轻量级、完全离线的 Android 音频播放器，专为�
 
 | 设备 | ADB Serial | Android | 状态 | 备注 |
 |---|---|---|---|---|
-| Redmi Turbo 4 Pro | `C7Y6R19828004113` | 新机型（待确认） | ✅ 已连接 | 主要测试机；输入法窗口可能遮挡 UI（需先收起输入法再 uiautomator dump） |
-| Honor 9X | 旧机型 | Android 9 (API 28) | ❌ 未连接 | 之前的测试机 |
+| Redmi Turbo 4 Pro | `C7Y6R19828004113` | 新机型（待确认） | ✅ 已连接 | 主要测试机 |
 
 ---
 
@@ -30,97 +29,61 @@ Audio Cat 是一款轻量级、完全离线的 Android 音频播放器，专为�
 
 ### Bug 1 — 切歌自动播放不一致
 **现象**：切换歌曲时有时自动播放，有时不会。  
-**根因**：
-- 播放列表中有已删除文件的残留行（tone440/tone660），切到这些轨道时 ExoPlayer 报错后停止
-- 自动扫描开关已修复（见 Bug 2），长期可自动清理残留行
-- `PlayerConnection.next()/previous()` 的 fallback 路径使用 `seekToNextMediaItem()` 不触发 `playWhenReady`
-
-**已实施的修复（已在当前代码中）**：
-- `PlaybackService.onPlayerError`：删除无法读取的文件对应的 DB 行 + 从队列移除该轨 + 跳到下一首继续播放（`skipBrokenItem`/`forgetTrack`）
-- `PlayerConnection.next()/previous()`：fallback 路径在 `seekToNextMediaItem()`/`seekToPreviousMediaItem()` 后显式调用 `play()`
-
-**涉及文件**：
-- `app/src/main/java/com/audiocat/playback/PlaybackService.kt`（`onPlayerError`、`skipBrokenItem`、`forgetTrack`）
-- `app/src/main/java/com/audiocat/playback/PlayerConnection.kt`（`next()`、`previous()`）
-
----
+**根因**：播放列表中有已删除文件的残留行，切到这些轨道时 ExoPlayer 报错后停止；`PlayerConnection.next()/previous()` 的 fallback 路径使用 `seekToNextMediaItem()` 不触发 playWhenReady。  
+**修复**：`PlaybackService.onPlayerError` 删除损坏文件行 + skipBrokenItem；`PlayerConnection.next()/previous()` fallback 路径在 seek 后显式调用 `play()`。
 
 ### Bug 2 — 设置页所有开关无法点击
-**现象**：设置页所有 toggle（自动扫描、默认随机、耳机恢复、断开暂停、音效开关等）都无法通过点击切换。  
-**根因**：
-- `item_settings_row.xml` 中 `rowSwitch` 设置了 `android:clickable="false"` 和 `android:focusable="false"`
-- `SettingsFragment.addRow()` 只在有 `onClick` 时才设置 `rowRoot` 的点击监听；纯 switch 行没有 onClick → 整个行没有点击处理 → 开关完全失效
-- 这导致用户无法开启自动扫描，间接导致 Bug 1 中的残留文件行无法被自动清理（因果关系）
+**现象**：设置页所有 toggle 都无法通过点击切换。  
+**根因**：`item_settings_row.xml` 的 `rowSettings` 设置了 `clickable="false"` 和 `focusable="false"`；且 `addRow()` 只在有 onClick 时才设监听。  
+**修复**：移除 clickable/focusable=false；`addRow()` 对 switch 行改为 rowRoot click → switch.toggle()。
 
-**已实施的修复**：
-- 移除 `item_settings_row.xml` 中 `rowSwitch` 的 `clickable="false"` 和 `focusable="false"`
-- `SettingsFragment.addRow()` 改为：当 `switch=true` 时，`rowRoot` 点击 → `row.rowSwitch.toggle()`
+### Bug 3 — 随机播放/拖拽/移除时音频短暂中断
+**现象**：切换 shuffle、拖拽重排队列、移除队列项时都有可闻的短暂停顿。  
+**根因**：`setShuffle()` / `moveInQueue()` / `removeFromQueue()` 都调用 `pushQueueToPlayer()` → `setMediaItems()+prepare()` → 解码器重建 → 音频空隙。  
+**修复**：
+- `setShuffle()` 改用 `reorderPlayerPaths()` 辅助方法，使用 `moveMediaItem()` 原地重排
+- `moveInQueue()` 改用单个 `moveMediaItem(from, to)`
+- `removeFromQueue()` 当移除的非播放项时改用 `removeMediaItem(position)`
+- 新增 `reorderPlayerPaths()` 辅助方法（最多 n-1 次 moveMediaItem）
 
-**涉及文件**：
-- `app/src/main/res/layout/item_settings_row.xml`
-- `app/src/main/java/com/audiocat/ui/settings/SettingsFragment.kt`（`addRow` 方法）
+### Bug 4 — 封面加载不充分（双重节流 bug）
+**根因**：`enrichBacklog()` 先对候选集 `.take(artBudget)`，然后传给 `enrich()` 内部又 `.take(artBudget)`，导致大曲库封面增量加载被严重限制。  
+**修复**：移除 enrichBacklog 中的重复 take。
 
----
+### Bug 5 — Shuffle 状态 UI 不同步
+**现象**：开启随机播放后，Shuffle 按钮始终显示关闭。  
+**根因**：`PlayerConnection.syncAll()` 和 `refreshQueue()` 都读 `player.shuffleModeEnabled`，但该值始终为 false（app 管理 shuffle 靠重排 item，不设原生 shuffleMode）。  
+**修复**：改为从 `service.queue.shuffle` 读取；`onShuffleModeEnabledChanged()` 仅在 service 为 null 时生效；`PlaybackService.queue` 改为 internal。
 
-## 待办 / 未完成 🔴
-
-### Bug 3 — 切换随机播放时音频短暂中断
-**现象**：点击shuffle按钮后，正在播放的音频会有可闻的短暂停顿。  
-**根因**：`PlaybackService.setShuffle()` 调用 `pushQueueToPlayer()` → `player.setMediaItems()` + `prepare()` → 解码器被拆除重建 → 约 100-500ms 的音频空隙。
-
-**修复方案讨论（尚未确定最终方案）**：
-
-| 方案 | 优点 | 缺点 |
-|---|---|---|
-| A. `player.shuffleModeEnabled = true` | 零中断 | ExoPlayer 内部 shuffle 顺序不等于 app 的 QueueEngine 排列，queue sheet 显示会与实际不符 |
-| B. `moveMediaItemFromToIndex(from, to, allowPlayingItemMove=true)` 逐个移动 | 不重新 prepare，无中断 | 实现稍复杂；API 行为需验证 |
-| C. 重构为 queue cursor ↔ player index 映射，shuffle 只改模型不改 player 列表 | 零中断 + shuffle 即时；需改动约 6 处索引映射（applyCursor/jumpToQueuePosition/removeFromQueue/moveInQueue/skipBrokenItem/onPositionDiscontinuity）+ MediaSession next/prev 覆写 | 改动较大，需充分测试 |
-| D. 最小修复：不移动当前播放项，只 shuffle 其他项 | 当前播放不中断 | 实现仍较复杂 |
-
-**建议下一步**：优先验证方案 B 的 `moveMediaItemFromToIndex` API 行为（`allowPlayingItemMove=true` 时是否不重新 prepare）；若不行则回退方案 C。  
-**涉及文件**：`app/src/main/java/com/audiocat/playback/PlaybackService.kt`、`PlaybackQueue.kt`
+### Bug 6 — pruneMissing 音量检测错误
+**根因**：`volumeOf()` 固定取 segments[1] 和 segments[2]，当 SD 卡路径嵌套 >3 段时返回错误的 mount point。  
+**修复**：重写为正确区分内部存储和可移动存储。
 
 ---
 
-### Bug 4 — 封面艺术图未充分加载
-**现象**：部分有内置封面的歌曲在播放器中不显示封面。  
-**根因**：
-- 用户大部分 MP3 文件确实没有经内嵌 APIC/covr 标签
-- 扫描的 `DEFAULT_ART_BUDGET = 300` 对 15 首曲库足够，但对大曲库不充分
-- 经检查路径查找逻辑已实现（`CoverFinder.kt` + `ArtworkStore.sidecarFor()`），**但需确认新 Redmi 上文件系统的读取权限**
+## 已实现的新功能 🎯
 
-**已实施的部分**：
-- `CoverFinder`：查找同目录下的 `cover.jpg` / `folder.jpg` / `front.jpg` 等及同名图片（`movie.mp4` → `movie.jpg`）
-- `ArtworkStore.sidecarFor()` 优先级：同名图片 > 文件夹封面名 > 视频首帧
+### 功能 1 — Playlist 泳道拖拽排序
+用户可通过 lane card 前端的 6-dot 拖拽手柄重新排列 playlist 顺序。  
+**实现**：新增 `ic_drag_handle.xml`；修改 `PlaylistLaneAdapter` 增加 `onStartDrag` 和 `moveLaneItem()`；`PlaylistFragment.setUpLane()` 创建 `ItemTouchHelper.Callback` 处理水平拖拽；"All songs" 卡片固定首位不可拖拽；`Playlist` 实体新增 `lane_order` 列（DB v3→v4）；`PlaylistDao.setLaneOrder()` 持久化新顺序。
 
-**待办**：
-- [ ] 在新 Redmi Turbo 4 Pro 上手动触发"完全扫描"（force=true），确认封面是否正确加载
-- [ ] 确认 Scoped Storage 下 app 是否可以通过 `File(path).canRead()` 读取同级目录的图片文件
-- [ ] 考虑：force=true 扫描时使用无上限的 artBudget（当前 `DEFAULT_ART_BUDGET = 300`，对大曲库不够）
-
-**涉及文件**：`app/src/main/java/com/audiocat/scanner/CoverFinder.kt`、`ArtworkStore.kt`、`LibraryScanner.kt`
+### 功能 2 — Playlist 折叠下拉菜单
+在 header 区域新增下拉按钮，点击弹出 `ListPopupWindow`，以逐行列表展示所有 playlist（不含歌曲），点击即切换到对应 playlist。  
+**实现**：header 新增 `btnPlaylistPicker`；`PlaylistFragment.showPlaylistPicker()` 创建 ListPopupWindow（宽度 60% 或 200dp）；维护 `laneRows` 快照。
 
 ---
 
-### Bug 5 — 在新 Redmi Turbo 4 Pro 上的待验证项
-**需要连接设备后手动测试**：
+## 待手动验证（在 Redmi Turbo 4 Pro 上）🔴
 
-- [ ] **开关切换**：验证 Bug 2 修复后所有设置开关是否正常工作
-- [ ] **切歌自动播放**：验证 Bug 1 修复后切歌是否始终自动播放
-- [ ] **切歌 fallback 路径**：当 service 未绑定时，通过 MediaController 的下一首是否也能触发播放
-- [ ] **封面加载**：扫描后检查封面是否正常显示
-- [ ] **音效/均衡器**：EQ 预设切换、低音增强、混响是否正常工作
-- [ ] **蓝牙耳机**：连接/断开时自动暂停/恢复（耳机相关设置开关已修复）
-- [ ] **通知栏控制**：播放/暂停/下一首/上一首
-- [ ] **文件夹排除**：设置中排除文件夹是否生效
-
----
-
-### 代码质量 / 工程化
-
-- [ ] 确认 `verify.sh`（detekt 静态分析）通过
-- [ ] 确认 APK 构建成功 (`./gradlew assembleDebug`)
-- [ ] 确认在 Redmi 上安装并启动无 crash
+- [ ] **开关切换**：所有设置开关正常工作
+- [ ] **切歌自动播放**：切歌始终自动播放
+- [ ] **封面加载**：扫描后封面正常显示
+- [ ] **音效/均衡器**：EQ、低音增强、混响
+- [ ] **蓝牙耳机**：连接/断开自动暂停/恢复
+- [ ] **通知栏控制**：播放暂停/下一首/上一首
+- [ ] **全新安装**：DB v4 的 lane_order 对已有用户表现正确
+- [ ] **Playlist 拖拽**：lane 拖拽排序符合预期
+- [ ] **Playlist 下拉菜单**：折叠列表+切换正常工作
 
 ---
 
@@ -132,28 +95,41 @@ app/src/main/java/com/audiocat/
 ├── MainActivity.kt             # 主 Activity，底部导航
 ├── data/
 │   ├── SettingsStore.kt        # SharedPreferences 封装
-│   ├── db/                     # Room 数据库
-│   │   ├── Track.kt            # 音轨实体（含 artPath 列）
-│   │   ├── TrackDao.kt         # 含 deleteByPaths / setArtPath / pathsPendingEnrichment
-│   │   └── ...
+│   ├── db/                     # Room 数据库 (v4)
+│   │   ├── Track.kt            # 音轨实体
+│   │   ├── Playlist.kt         # 含新增 lane_order 列
+│   │   ├── PlaylistDao.kt      # 含新增 setLaneOrder()
+│   │   └── AudioCatDatabase.kt # version = 4
 ├── playback/
-│   ├── PlaybackService.kt      # 核心：ExoPlayer 封装、错误修复
-│   ├── PlaybackQueue.kt        # QueueEngine, setShuffle/setRepeat/next/previous, removeAt
-│   ├── PlayerConnection.kt     # UI↔Service 桥接
+│   ├── PlaybackService.kt      # 核心：shuffle/move/remove 零中断修复
+│   ├── PlaybackQueue.kt        # QueueEngine, setShuffle/setRepeat/next/previous
+│   ├── PlayerConnection.kt     # UI↔Service 桥接（shuffle 状态修复）
 │   └── PlaybackStateStore.kt   # 持久化播放状态
 ├── scanner/
-│   ├── LibraryScanner.kt       # 媒体库扫描（策略：新增→封面富化→清理）
-│   ├── ScanCoordinator.kt      # 调度扫描任务（自动/手动）
-│   ├── ArtworkStore.kt         # 封面缓存（embedded → sidecar → video frame）
+│   ├── LibraryScanner.kt       # 修复 enrichBacklog 双重节流 + volumeOf
+│   ├── ScanCoordinator.kt      # 调度扫描任务
+│   ├── ArtworkStore.kt         # 封面缓存
 │   ├── CoverFinder.kt          # 同级图片查找
 │   └── TrackMetadataReader.kt  # 元数据/内嵌封面提取
 ├── ui/
 │   ├── settings/SettingsFragment.kt  # 设置页（含 addRow 修复）
-│   ├── playing/                # PlayerFragment/NowPlayingSheet/QueueSheet/Playlist*
-│   ├── files/                  # FilesFragment（文件浏览）
-│   ├── effects/                # EQ/Effects
-│   └── common/                 # 共用 UI 组件
-└── files/                      # 文件操作（删除/重命名/批量）
+│   ├── playing/
+│   │   ├── PlaylistFragment.kt       # 泳道拖拽 + 下拉菜单
+│   │   ├── PlaylistLaneAdapter.kt    # 拖拽支持
+│   │   └── ...
+│   └── files/                  # FilesFragment（文件浏览）
+└── effects/                    # EQ/Effects
+    └── EffectsEngine.kt
+
+res/drawable/
+├── ic_drag_handle.xml          # 新增：6-dot 拖拽手柄
+├── ic_drag.xml                 # 保留：向后兼容 queue adapter
+└── ...
+
+res/layout/
+├── item_playlist_lane.xml      # 新增 laneDragHandle
+├── fragment_playlist.xml       # 新增 btnPlaylistPicker
+└── ...
 ```
 
 ## 常用命令
@@ -162,25 +138,17 @@ app/src/main/java/com/audiocat/
 # 构建 debug APK
 ./gradlew assembleDebug
 
-# 静态分析
-./scripts/verify.sh
-
 # 安装到已连接设备
 adb -s C7Y6R19828004113 install -r app/build/outputs/apk/debug/app-debug.apk
 
-# 查看当前连接的设备
-adb devices
-
-# 抓取 UI 层级（在 Redmi 上需先关闭输入法窗口）
-adb -s C7Y6R19828004113 shell uiautomator dump /sdcard/win.xml
-adb -s C7Y6R19828004113 pull /sdcard/win.xml /tmp/win.xml
-
-# 过滤 logcat
+# 查看 logcat
 adb -s C7Y6R19828004113 logcat -d | grep -iE "audiocat|FATAL|AndroidRuntime"
+
+# 启动 app
+adb -s C7Y6R19828004113 shell am start -n com.audiocat.debug/com.audiocat.MainActivity
 ```
 
 ## 版本管理约定
 
 - 主分支：`main`，与 `origin/main` 同步
 - 版本号标记：commit message 格式为 `Audio Cat X.Y.Z — <简短描述>`
-- 发布前打 tag：`git tag vX.Y.Z`

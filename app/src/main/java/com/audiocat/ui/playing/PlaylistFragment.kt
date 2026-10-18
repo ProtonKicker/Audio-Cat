@@ -3,6 +3,7 @@ package com.audiocat.ui.playing
 import android.content.Context
 import android.os.Bundle
 import android.view.View
+import android.widget.ArrayAdapter
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
@@ -11,6 +12,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.audiocat.AudioCatApp
@@ -113,10 +115,70 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
         laneAdapter = PlaylistLaneAdapter(
             onClick = { item -> selectedPlaylist.value = item.playlistId },
             onLongClick = { item -> showPlaylistActions(item) },
-        ).also {
+            onMoved = { from, to -> onLaneItemMoved(from, to) },
+        ).also { adapter ->
             binding.playlistLane.layoutManager =
                 LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
-            binding.playlistLane.adapter = it
+            binding.playlistLane.adapter = adapter
+            // Drag-to-reorder: horizontal lane means only left/right moves.
+            // The callback is created first so both the attach + the drag-start
+            // hook can share a single instance.
+            val callback = object : ItemTouchHelper.Callback() {
+                override fun isLongPressDragEnabled() = false
+
+                override fun getMovementFlags(
+                    recyclerView: RecyclerView,
+                    viewHolder: RecyclerView.ViewHolder,
+                ): Int {
+                    // The "All songs" card cannot be dragged.
+                    if (viewHolder.bindingAdapterPosition == 0) {
+                        return makeMovementFlags(0, 0)
+                    }
+                    return makeMovementFlags(ItemTouchHelper.LEFT or ItemTouchHelper.RIGHT, 0)
+                }
+
+                override fun onMove(
+                    recyclerView: RecyclerView,
+                    viewHolder: RecyclerView.ViewHolder,
+                    target: RecyclerView.ViewHolder,
+                ): Boolean {
+                    val from = viewHolder.bindingAdapterPosition
+                    val to = target.bindingAdapterPosition
+                    if (from == RecyclerView.NO_POSITION || to == RecyclerView.NO_POSITION) return false
+                    adapter.moveLaneItem(from, to)
+                    return true
+                }
+
+                override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) = Unit
+
+                override fun clearView(
+                    recyclerView: RecyclerView,
+                    viewHolder: RecyclerView.ViewHolder,
+                ) {
+                    super.clearView(recyclerView, viewHolder)
+                    // Drag finished — hand the new order to the owner so it sticks.
+                    onLaneOrderCommitted(adapter.committedOrder())
+                }
+            }
+            val touchHelper = ItemTouchHelper(callback)
+            adapter.onStartDrag = { vh -> touchHelper.startDrag(vh) }
+            touchHelper.attachToRecyclerView(binding.playlistLane)
+        }
+    }
+
+    /** Persists a finished drag as the new playlist-order for this session. */
+    private fun onLaneItemMoved(from: Int, to: Int) {
+        // Local-only: the UI already tracks the finger via moveLaneItem; no DB
+        // write per frame. The authoritative write happens in onLaneOrderCommitted.
+    }
+
+    /** Rewrites the stored lane order after a drag ends. */
+    private fun onLaneOrderCommitted(order: List<LaneItem>) {
+        val ids = order.mapNotNull { it.playlistId }
+        viewLifecycleOwner.lifecycleScope.launch {
+            ids.forEachIndexed { index, id ->
+                app.database.playlistDao().setLaneOrder(id, index)
+            }
         }
     }
 
@@ -136,7 +198,53 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
         binding.btnSort.setOnClickListener { showSortDialog() }
         binding.btnFilter.setOnClickListener { showFilterDialog() }
         binding.btnNewPlaylist.setOnClickListener { promptNewPlaylist() }
+        binding.btnPlaylistPicker.setOnClickListener { showPlaylistPicker(it) }
     }
+
+    /**
+     * A compact, line-by-line list of every playlist, anchored to the header
+     * picker button. It collapses the horizontal lane into a popup so a user can
+     * jump straight to a playlist without scrolling cards.
+     */
+    private fun showPlaylistPicker(anchor: View) {
+        val rows = laneRows
+        if (rows.isEmpty()) {
+            promptNewPlaylist()
+            return
+        }
+        val ctx = requireContext()
+        val adapter = ArrayAdapter(
+            ctx,
+            android.R.layout.simple_list_item_1,
+            rows.map { it.playlist.name },
+        )
+        // PopupWindow keeps it lightweight — no dialog, no fragment, just a list.
+        val popup = android.widget.ListPopupWindow(ctx).apply {
+            this.anchorView = anchor
+            setAdapter(adapter)
+            setOnItemClickListener { _, _, position, _ ->
+                val row = rows[position]
+                selectedPlaylist.value = row.playlist.id
+                laneAdapter?.setSelectedId(row.playlist.id)
+                dismiss()
+            }
+            isModal = true
+            setBackgroundDrawable(
+                android.graphics.drawable.ColorDrawable(0),
+            )
+            setDropDownGravity(android.view.Gravity.END)
+        }
+        popup.width = (
+            (anchor.resources.displayMetrics.widthPixels * 0.6f)
+                .toInt()
+                .coerceAtLeast(anchor.resources.displayMetrics.density.times(200).toInt())
+            )
+        popup.show()
+    }
+
+    // Snapshot of the current playlist rows, kept so the picker and lane agree
+    // on what exists without re-querying the Flow on every header click.
+    private var laneRows: List<PlaylistRow> = emptyList()
 
     // ---------------------------------------------------------------------
     // The lane
@@ -150,6 +258,7 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
                     app.database.trackDao().observeVisibleCount(),
                 ) { rows, libraryCount -> rows to libraryCount }
                     .collect { (rows, libraryCount) ->
+                        laneRows = rows
                         playlistNames = rows.associate { it.playlist.id to it.playlist.name }
                         laneAdapter?.submitList(
                             buildList {

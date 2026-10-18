@@ -47,7 +47,7 @@ interface ScanFolderDao {
     // Bumped whenever the schema changes. The app has never shipped, so a
     // destructive fallback is safe and keeps migration code from being carried
     // for schemas no user ever had.
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(FolderModeConverter::class)

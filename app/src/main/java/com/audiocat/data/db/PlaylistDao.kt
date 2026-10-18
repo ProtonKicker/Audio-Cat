@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface PlaylistDao {
 
-    @Query("SELECT * FROM playlists ORDER BY name COLLATE NOCASE ASC")
+    @Query("SELECT * FROM playlists ORDER BY lane_order ASC, name COLLATE NOCASE ASC")
     fun observeAll(): Flow<List<Playlist>>
 
     @Query("SELECT * FROM playlists WHERE id = :id LIMIT 1")
@@ -34,6 +34,14 @@ interface PlaylistDao {
 
     @Query("SELECT COUNT(*) FROM playlists")
     suspend fun count(): Int
+
+    /**
+     * Rewrites the lane order to match [orderedIds] exactly. Any id not in the
+     * list (because it was removed between drag-start and commit) is left at its
+     * current lane_order.
+     */
+    @Query("UPDATE playlists SET lane_order = :order WHERE id = :id")
+    suspend fun setLaneOrder(id: Long, order: Int)
 }
 
 /** Projection for [PlaylistDao.observeTrackCounts]. */

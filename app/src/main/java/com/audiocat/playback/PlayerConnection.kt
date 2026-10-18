@@ -118,7 +118,11 @@ class PlayerConnection(private val context: Context) {
     private fun syncAll() {
         val player = controller ?: return
         _isPlaying.value = player.isPlaying
-        _shuffle.value = player.shuffleModeEnabled
+        // The app manages shuffle by reordering the player's items (never by
+        // setting native shuffleMode), so player.shuffleModeEnabled is always
+        // false. Read the real state from the service's queue and only fall back
+        // to the player when the service is unavailable.
+        _shuffle.value = service?.queue?.shuffle ?: player.shuffleModeEnabled
         _repeat.value = player.repeatMode.toRepeatMode()
         _durationMs.value = player.duration.coerceAtLeast(0L)
         _positionMs.value = player.currentPosition
@@ -148,6 +152,11 @@ class PlayerConnection(private val context: Context) {
             _currentTrack.value = null
             return
         }
+        // Read shuffle from the service's queue model when available — the app
+        // manages shuffle by reordering items (player.shuffleModeEnabled is never
+        // set), so the player always reports shuffle=false. The service's queue is
+        // the source of truth; fall back to the player when the service is down.
+        val shuffleState = service?.queue?.shuffle ?: player.shuffleModeEnabled
         scope.launch {
             val tracks = app?.database?.trackDao()?.byPaths(paths).orEmpty()
             val byPath = tracks.associateBy { it.path }
@@ -162,7 +171,7 @@ class PlayerConnection(private val context: Context) {
                 tracks = ordered,
                 order = ordered.indices.toList(),
                 cursor = index,
-                shuffle = player.shuffleModeEnabled,
+                shuffle = shuffleState,
                 repeat = player.repeatMode.toRepeatMode(),
             )
             _currentTrack.value = ordered.getOrNull(index)
@@ -329,7 +338,11 @@ class PlayerConnection(private val context: Context) {
         }
 
         override fun onShuffleModeEnabledChanged(shuffleModeEnabled: Boolean) {
-            _shuffle.value = shuffleModeEnabled
+            // Only trust the player callback when the service is not in control.
+            // The app manages its own shuffle by reordering items — it never sets
+            // native shuffleMode — so this callback always reports false and would
+            // wipe out the real state read from the service's queue.
+            if (service == null) _shuffle.value = shuffleModeEnabled
         }
 
         override fun onRepeatModeChanged(repeatMode: Int) {

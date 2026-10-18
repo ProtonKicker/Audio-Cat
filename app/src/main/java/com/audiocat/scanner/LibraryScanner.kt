@@ -298,9 +298,11 @@ class LibraryScanner(
         // pressure, and "clear covers" empties it outright.
         pending += artwork.orphaned(db.trackDao().artPaths())
         if (pending.isEmpty()) return 0
+        // Filter first, then let enrich() apply the budget: taking here and again
+        // inside enrich would double-throttle the per-run cap, starving large
+        // libraries of artwork over many incremental runs.
         val backlog = (plan.toIndex + plan.unchanged)
             .filter { it.path in pending }
-            .take(artBudget)
         return enrich(backlog, artBudget, maxPx)
     }
 
@@ -383,14 +385,22 @@ class LibraryScanner(
         return gone.size
     }
 
-    /** The mount point of a path, e.g. `/storage/emulated/0` or `/storage/ABCD-1234`. */
+    /** The mount point of a path, e.g. `/storage/emulated/0` or `/storage/ABCD-1234`. *
+     *  Internal storage always nests under /storage/emulated/<index>;
+     *  removable cards live at /storage/<uuid>. The previous check
+     *  ("segments.size >= 3" + taking [1] and [2]) broke for deeply-nested
+     *  SD card paths and for the 2-segment removable case. */
     private fun volumeOf(path: String): String {
-        val segments = path.split('/').filter { it.isNotEmpty() }
-        return if (segments.size >= VOLUME_SEGMENTS && segments.first() == "storage") {
-            "/storage/${segments[1]}/${segments[2]}"
-        } else {
-            "/"
+        if (!path.startsWith("/storage/")) return "/"
+        val rest = path.removePrefix("/storage/")
+        val parts = rest.split('/').filter { it.isNotEmpty() }
+        if (parts.isEmpty()) return "/"
+        // Internal: /storage/emulated/0
+        if (parts.first() == "emulated" && parts.size >= 2) {
+            return "/storage/emulated/${parts[1]}"
         }
+        // Removable: /storage/XXXX-XXXX (single component, no trailing slash)
+        return "/storage/${parts.first()}"
     }
 
     /**
@@ -519,9 +529,6 @@ class LibraryScanner(
 
         /** Concurrent metadata readers: keeps the disk busy without contention. */
         const val ART_CONCURRENCY = 4
-
-        /** Path segments that make up a mount point: storage, volume type, volume id. */
-        private const val VOLUME_SEGMENTS = 3
 
         fun volumeRoot(): String = "/storage/emulated/0"
     }
