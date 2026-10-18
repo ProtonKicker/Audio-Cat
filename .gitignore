@@ -14,3 +14,7 @@ keystore/
 
 # Agent session transcripts and workflow runs
 .qoder/
+
+# Chat export / test log dumps (large text files at repo root)
+/*-test-*.txt
+transcripts/
