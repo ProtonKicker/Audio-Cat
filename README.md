@@ -1,3 +1,7 @@
+<div align="center">
+  <img src="screenshots/cat-logo.jpg" alt="Audio Cat logo" width="128" />
+</div>
+
 # Audio Cat
 
 Audio Cat is a fully offline Android audio player whose purpose is to play the **audio track of local video files** without ever decoding or rendering the video. It indexes media through MediaStore, stores the library in Room, and plays through a Media3/ExoPlayer instance that is deliberately built with no video renderer and no surface. It is a Kotlin app built with the Gradle Kotlin DSL, a View-based UI (XML + ViewBinding, Material 3), minSdk 26, compileSdk/targetSdk 36. The original specification is in [app_plan.md](app_plan.md).
