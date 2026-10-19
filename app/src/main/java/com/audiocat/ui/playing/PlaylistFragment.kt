@@ -3,6 +3,7 @@ package com.audiocat.ui.playing
 import android.content.Context
 import android.os.Bundle
 import android.view.View
+import androidx.activity.OnBackPressedCallback
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
@@ -88,6 +89,28 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
         observePlaylists(binding)
         observeOpenPlaylist(binding)
         observePlayback()
+        setUpBackHandling()
+    }
+
+    /**
+     * While a playlist is open, the system back gesture / button should step back
+     * to the playlists root rather than leaving the app entirely. At root the
+     * default behaviour (exit) applies, so the callback only activates when it
+     * has somewhere to go.
+     */
+    private fun setUpBackHandling() {
+        val callback = object : OnBackPressedCallback(false) {
+            override fun handleOnBackPressed() {
+                openPlaylist.value = null
+            }
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, callback)
+        // Enable the callback only when we are inside a playlist.
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                openPlaylist.collect { target -> callback.isEnabled = target != null }
+            }
+        }
     }
 
     /** Hosts the virtual "All" plus the user's playlists. */
@@ -199,6 +222,7 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
                     binding.playlistsList.isVisible = isRoot
                     binding.libraryList.isVisible = !isRoot
                     binding.btnBack.isVisible = !isRoot
+                    binding.btnNewPlaylist.isVisible = isRoot
                     binding.btnSearch.isVisible = !isRoot
                     binding.btnSort.isVisible = !isRoot
                     binding.btnFilter.isVisible = !isRoot
