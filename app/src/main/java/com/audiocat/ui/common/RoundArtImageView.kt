@@ -67,6 +67,6 @@ class RoundArtImageView @JvmOverloads constructor(
     override fun setShapeAppearanceModel(shapeAppearanceModel: ShapeAppearanceModel) = Unit
 
     private companion object {
-        const val RADIUS_DP = 3f
+        const val RADIUS_DP = 8f
     }
 }

@@ -24,10 +24,17 @@
             android:paddingTop="8dp"
             android:paddingEnd="8dp">
 
+            <com.google.android.material.materialswitch.MaterialSwitch
+                android:id="@+id/togglePlaylists"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:contentDescription="@string/playlist_view_toggle" />
+
             <TextView
                 android:id="@+id/libraryHeader"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
                 android:layout_weight="1"
                 android:text="@string/library_all_songs"
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
@@ -68,17 +75,6 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/playlist_new"
                 android:src="@drawable/ic_add"
-                app:tint="?attr/colorOnSurfaceVariant" />
-
-            <!-- Quick playlist picker: a compact line-by-line list of every
-                 playlist that collapses the horizontal lane into a dropdown. -->
-            <ImageButton
-                android:id="@+id/btnPlaylistPicker"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/playlist_picker"
-                android:src="@drawable/ic_queue"
                 app:tint="?attr/colorOnSurfaceVariant" />
         </LinearLayout>
 
@@ -154,6 +150,16 @@
                 android:paddingBottom="12dp"
                 android:scrollbars="vertical" />
 
+            <!-- Vertical playlists list, shown instead of songs when toggled -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/playlistsList"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:clipToPadding="false"
+                android:paddingBottom="12dp"
+                android:scrollbars="vertical"
+                android:visibility="gone" />
+
             <LinearLayout
                 android:id="@+id/libraryEmpty"
                 android:layout_width="match_parent"
@@ -192,4 +198,61 @@
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>
+
+    <!-- Batch selection bar: add selected songs to a playlist -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/selectionBar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_margin="8dp"
+        android:visibility="gone"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="6dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="4dp"
+            android:paddingBottom="4dp">
+
+            <TextView
+                android:id="@+id/selectionCount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textAppearance="?attr/textAppearanceTitleSmall" />
+
+            <ImageButton
+                android:id="@+id/btnSelectAll"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_select_all"
+                android:src="@drawable/ic_check"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+            <ImageButton
+                android:id="@+id/btnAddToPlaylist"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/files_add_playlist"
+                android:src="@drawable/ic_playlist_add"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+            <ImageButton
+                android:id="@+id/btnSelectionClose"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_close"
+                android:src="@drawable/ic_close"
+                app:tint="?attr/colorOnSurfaceVariant" />
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

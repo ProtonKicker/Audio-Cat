@@ -3,7 +3,6 @@ package com.audiocat.ui.playing
 import android.content.Context
 import android.os.Bundle
 import android.view.View
-import android.widget.ArrayAdapter
 import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.isVisible
@@ -50,6 +49,7 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
     private var binding: FragmentPlaylistBinding? = null
     private var adapter: TrackAdapter? = null
     private var laneAdapter: PlaylistLaneAdapter? = null
+    private var playlistsAdapter: PlaylistRowAdapter? = null
 
     /** The unfiltered rows of the current scope, used to offer format choices. */
     private var scopeTracks: List<Track> = emptyList()
@@ -74,6 +74,13 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
     /** Null while the lane selects the whole library. */
     private val selectedPlaylist = MutableStateFlow<Long?>(null)
 
+    /** Toggle between songs view (default) and playlists-as-list view. */
+    private val showPlaylistsView = MutableStateFlow(false)
+
+    /** Batch selection state. */
+    private var selectionMode = false
+    private val selectedPaths = linkedSetOf<String>()
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         val binding = FragmentPlaylistBinding.bind(view).also { this.binding = it }
@@ -81,24 +88,54 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
         sort.value = TrackSort.fromKey(AudioCatApp.get().settings.current.defaultSort)
         setUpList(binding)
         setUpLane(binding)
+        setUpPlaylistsList(binding)
         setUpHeader(binding)
+        setUpSelectionBar(binding)
         observePlaylists(binding)
         observeLibrary(binding)
         observePlayback()
+        observeViewToggle(binding)
+    }
+
+    /** Reacts to the playlists-view toggle by swapping list visibility + header. */
+    private fun observeViewToggle(binding: FragmentPlaylistBinding) {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                showPlaylistsView.collect { showLists ->
+                    binding.libraryList.isVisible = !showLists
+                    binding.playlistsList.isVisible = showLists
+                    binding.playlistLane.isVisible = laneRows.isNotEmpty() && !showLists
+                    binding.btnSearch.isVisible = !showLists
+                    binding.btnSort.isVisible = !showLists
+                    binding.btnFilter.isVisible = !showLists
+                    binding.libraryHeader.setText(
+                        if (showLists) R.string.playlists_title else R.string.library_all_songs,
+                    )
+                }
+            }
+        }
     }
 
     private fun setUpList(binding: FragmentPlaylistBinding) {
         adapter = TrackAdapter(
             artwork = ArtworkLoader::uri,
-            onClick = { position, _ ->
-                val tracks = adapter?.currentList.orEmpty()
-                if (tracks.isEmpty()) return@TrackAdapter
-                player.playTracks(tracks, position)
-                // Starting playback from a list means the user wants to see what
-                // is playing, not the list they tapped in.
-                (requireActivity() as MainActivity).showPlayer()
+            onClick = { position, track ->
+                if (selectionMode) {
+                    toggleSelection(track)
+                } else {
+                    val tracks = adapter?.currentList.orEmpty()
+                    if (tracks.isEmpty()) return@TrackAdapter
+                    player.playTracks(tracks, position)
+                    (requireActivity() as MainActivity).showPlayer()
+                }
             },
-            onLongClick = { _, track -> showTrackActions(track) },
+            onLongClick = { _, track ->
+                if (!selectionMode && !showPlaylistsView.value) {
+                    selectionMode = true
+                    selectedPaths += track.path
+                    renderSelection()
+                }
+            },
             onMoreClick = { _, track -> showTrackActions(track) },
         ).also {
             it.setShowMore(true)
@@ -108,6 +145,22 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
             it.stateRestorationPolicy = RecyclerView.Adapter.StateRestorationPolicy.PREVENT_WHEN_EMPTY
             binding.libraryList.layoutManager = LinearLayoutManager(requireContext())
             binding.libraryList.adapter = it
+        }
+    }
+
+    private fun setUpPlaylistsList(binding: FragmentPlaylistBinding) {
+        playlistsAdapter = PlaylistRowAdapter(
+            showDelete = true,
+            onClick = { playlist ->
+                if (showPlaylistsView.value) {
+                    PlaylistDetailSheet.newInstance(playlist.id, playlist.name)
+                        .show(parentFragmentManager, PlaylistDetailSheet.TAG)
+                }
+            },
+            onDelete = { playlist -> confirmDelete(playlist) },
+        ).also {
+            binding.playlistsList.layoutManager = LinearLayoutManager(requireContext())
+            binding.playlistsList.adapter = it
         }
     }
 
@@ -198,51 +251,49 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
         binding.btnSort.setOnClickListener { showSortDialog() }
         binding.btnFilter.setOnClickListener { showFilterDialog() }
         binding.btnNewPlaylist.setOnClickListener { promptNewPlaylist() }
-        binding.btnPlaylistPicker.setOnClickListener { showPlaylistPicker(it) }
+        binding.togglePlaylists.setOnCheckedChangeListener { _, isChecked ->
+            showPlaylistsView.value = isChecked
+        }
     }
 
-    /**
-     * A compact, line-by-line list of every playlist, anchored to the header
-     * picker button. It collapses the horizontal lane into a popup so a user can
-     * jump straight to a playlist without scrolling cards.
-     */
-    private fun showPlaylistPicker(anchor: View) {
-        val rows = laneRows
-        if (rows.isEmpty()) {
-            promptNewPlaylist()
-            return
+    private fun setUpSelectionBar(binding: FragmentPlaylistBinding) {
+        binding.btnSelectionClose.setOnClickListener { exitSelection() }
+        binding.btnSelectAll.setOnClickListener {
+            val allPaths = adapter?.currentList?.map { it.path } ?: emptyList()
+            selectedPaths.clear()
+            selectedPaths.addAll(allPaths)
+            renderSelection()
         }
-        val ctx = requireContext()
-        val adapter = ArrayAdapter(
-            ctx,
-            android.R.layout.simple_list_item_1,
-            rows.map { it.playlist.name },
-        )
-        // PopupWindow keeps it lightweight — no dialog, no fragment, just a list.
-        val popup = android.widget.ListPopupWindow(ctx).apply {
-            this.anchorView = anchor
-            setAdapter(adapter)
-            setOnItemClickListener { _, _, position, _ ->
-                val row = rows[position]
-                selectedPlaylist.value = row.playlist.id
-                laneAdapter?.setSelectedId(row.playlist.id)
-                dismiss()
+        binding.btnAddToPlaylist.setOnClickListener {
+            if (selectedPaths.isNotEmpty()) {
+                PlaylistPickerDialog.newInstance(selectedPaths.toList())
+                    .show(parentFragmentManager, PlaylistPickerDialog.TAG)
+                exitSelection()
             }
-            isModal = true
-            setBackgroundDrawable(
-                android.graphics.drawable.ColorDrawable(0),
-            )
-            setDropDownGravity(android.view.Gravity.END)
         }
-        popup.width = (
-            (anchor.resources.displayMetrics.widthPixels * 0.6f)
-                .toInt()
-                .coerceAtLeast(anchor.resources.displayMetrics.density.times(200).toInt())
-            )
-        popup.show()
     }
 
-    // Snapshot of the current playlist rows, kept so the picker and lane agree
+    private fun toggleSelection(track: Track) {
+        if (!selectedPaths.remove(track.path)) selectedPaths += track.path
+        if (selectedPaths.isEmpty()) exitSelection() else renderSelection()
+    }
+
+    private fun exitSelection() {
+        selectionMode = false
+        selectedPaths.clear()
+        renderSelection()
+    }
+
+    private fun renderSelection() {
+        val binding = binding ?: return
+        binding.selectionBar.isVisible = selectionMode
+        binding.selectionCount.text = getString(R.string.files_selected, selectedPaths.size)
+        adapter?.setSelectionMode(selectionMode)
+        adapter?.setSelectedPaths(selectedPaths.toSet())
+        adapter?.setShowMore(!selectionMode)
+    }
+
+    // Snapshot of the current playlist rows, kept so the lane and list agree
     // on what exists without re-querying the Flow on every header click.
     private var laneRows: List<PlaylistRow> = emptyList()
 
@@ -266,14 +317,9 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
                                 addAll(rows.map { LaneItem.Playlist(it, it.playlist.id) })
                             },
                         )
-                        // One card is not a lane: with no playlists the tab looks
-                        // exactly as it did before.
-                        binding.playlistLane.isVisible = rows.isNotEmpty()
-                        // A deleted or emptied selection must not strand the list.
-                        val selected = selectedPlaylist.value
-                        if (selected != null && selected !in playlistNames.keys) {
-                            selectedPlaylist.value = null
-                        }
+                        // Feed the vertical playlists list.
+                        playlistsAdapter?.submitList(rows)
+                        // The view-toggle observer handles lane/button visibility.
                     }
             }
         }
@@ -409,7 +455,7 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
         adapter?.submitList(visible)
 
         val narrowed = request.search.isNotEmpty() || request.kind != TrackFilter.All
-        binding.libraryEmpty.isVisible = visible.isEmpty()
+        binding.libraryEmpty.isVisible = visible.isEmpty() && !showPlaylistsView.value
         if (visible.isEmpty()) {
             binding.libraryEmptyTitle.setText(
                 if (narrowed) R.string.library_filter_empty else R.string.library_empty,
@@ -419,12 +465,14 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
             )
         }
 
-        // The header must never claim "All songs" over a narrowed list: a filter
-        // with no visible trace is the dead-affordance problem in another form.
-        binding.libraryHeader.text = when {
-            narrowed -> resources.getQuantityString(R.plurals.library_count, visible.size, visible.size)
-            playlistId == null -> getString(R.string.library_all_songs)
-            else -> playlistNames[playlistId].orEmpty()
+        // Only update the header while in songs mode; the view-toggle observer
+        // owns the header text in playlists mode.
+        if (!showPlaylistsView.value) {
+            binding.libraryHeader.text = when {
+                narrowed -> resources.getQuantityString(R.plurals.library_count, visible.size, visible.size)
+                playlistId == null -> getString(R.string.library_all_songs)
+                else -> playlistNames[playlistId].orEmpty()
+            }
         }
     }
 
@@ -576,8 +624,10 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
     override fun onDestroyView() {
         binding?.libraryList?.adapter = null
         binding?.playlistLane?.adapter = null
+        binding?.playlistsList?.adapter = null
         adapter = null
         laneAdapter = null
+        playlistsAdapter = null
         binding = null
         super.onDestroyView()
     }
