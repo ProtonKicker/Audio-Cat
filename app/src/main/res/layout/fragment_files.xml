@@ -123,6 +123,15 @@
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <ImageButton
+                android:id="@+id/btnAddToPlaylist"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/files_add_playlist"
+                android:src="@drawable/ic_playlist_add"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+            <ImageButton
                 android:id="@+id/btnBatchRename"
                 android:layout_width="44dp"
                 android:layout_height="44dp"

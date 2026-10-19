@@ -185,6 +185,7 @@
     <string name="action_cancel">Cancel</string>
     <string name="action_delete">Delete</string>
     <string name="action_close">Close</string>
+    <string name="action_back">Back</string>
     <string name="action_select_all">Select all</string>
     <string name="permission_needed">Storage permission is required to find your audio and video files.</string>
     <string name="permission_grant">Grant permission</string>

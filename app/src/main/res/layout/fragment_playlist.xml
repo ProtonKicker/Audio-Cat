@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Playlist tab: the library manager. The player itself is its own tab; this
-  page carries the list, search, sort and playlist access.
+  Playlist tab: shows playlists as vertical rows by default. A virtual "All"
+  playlist always leads the list and contains every detected song. Clicking any
+  entry opens that playlist's song list. The horizontal lane is gone — adding
+  songs to a playlist lives in the Files tab instead.
 -->
 <androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -14,24 +16,36 @@
         android:layout_height="match_parent"
         android:orientation="vertical">
 
-        <!-- Library header with search, sort and playlist access -->
+        <!-- Header: when at root level shows "Playlists" + new-playlist button;
+             when inside a playlist shows back + name. -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal"
-            android:paddingStart="16dp"
+            android:paddingStart="8dp"
             android:paddingTop="8dp"
             android:paddingEnd="8dp">
+
+            <ImageButton
+                android:id="@+id/btnBack"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/action_back"
+                android:src="@drawable/ic_arrow_back"
+                android:visibility="gone"
+                app:tint="?attr/colorOnSurfaceVariant" />
 
             <TextView
                 android:id="@+id/libraryHeader"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="@string/library_all_songs"
+                android:text="@string/playlists_title"
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
 
+            <!-- Search / sort / filter appear only inside a playlist view. -->
             <ImageButton
                 android:id="@+id/btnSearch"
                 android:layout_width="48dp"
@@ -39,6 +53,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/library_search_hint"
                 android:src="@drawable/ic_search"
+                android:visibility="gone"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <ImageButton
@@ -48,6 +63,7 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/settings_default_sort"
                 android:src="@drawable/ic_sort"
+                android:visibility="gone"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
             <ImageButton
@@ -57,10 +73,9 @@
                 android:background="?attr/selectableItemBackgroundBorderless"
                 android:contentDescription="@string/library_filter"
                 android:src="@drawable/ic_filter"
+                android:visibility="gone"
                 app:tint="?attr/colorOnSurfaceVariant" />
 
-            <!-- The playlist lane below is the browser, so this button only
-                 creates; rename, delete and edit live on a card's long press. -->
             <ImageButton
                 android:id="@+id/btnNewPlaylist"
                 android:layout_width="48dp"
@@ -112,58 +127,23 @@
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
-        <!--
-          Playlist lane row: a chevron expand button sits to the left of the
-          horizontal lane. It only appears when playlists exist; clicking it
-          flips between the lane and a full vertical list of all playlists.
-        -->
-        <LinearLayout
-            android:id="@+id/laneRow"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:layout_marginBottom="6dp"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:visibility="gone">
-
-            <ImageButton
-                android:id="@+id/btnExpandPlaylists"
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/playlist_expand"
-                android:padding="8dp"
-                android:scaleType="fitCenter"
-                android:src="@drawable/ic_expand_more"
-                app:tint="?attr/colorOnSurfaceVariant" />
-
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/playlistLane"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:clipToPadding="false"
-                android:paddingEnd="16dp"
-                android:scrollbars="none" />
-        </LinearLayout>
-
         <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
             android:layout_weight="1">
 
+            <!-- Root: vertical playlists list, always visible at root level. -->
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/libraryList"
+                android:id="@+id/playlistsList"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
                 android:paddingBottom="12dp"
                 android:scrollbars="vertical" />
 
-            <!-- Vertical playlists list, shown instead of songs when toggled -->
+            <!-- Inside a playlist: track list (hidden until a playlist is open). -->
             <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/playlistsList"
+                android:id="@+id/libraryList"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
@@ -180,8 +160,6 @@
                 android:padding="32dp"
                 android:visibility="gone">
 
-                <!-- The bare glyph, not the cover plate: a plate under a tint
-                     renders as a solid blob with no visible artwork. -->
                 <ImageView
                     android:layout_width="56dp"
                     android:layout_height="56dp"
@@ -209,61 +187,4 @@
             </LinearLayout>
         </FrameLayout>
     </LinearLayout>
-
-    <!-- Batch selection bar: add selected songs to a playlist -->
-    <com.google.android.material.card.MaterialCardView
-        android:id="@+id/selectionBar"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:layout_margin="8dp"
-        android:visibility="gone"
-        app:cardCornerRadius="20dp"
-        app:cardElevation="6dp">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center_vertical"
-            android:orientation="horizontal"
-            android:paddingStart="16dp"
-            android:paddingEnd="8dp"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp">
-
-            <TextView
-                android:id="@+id/selectionCount"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textAppearance="?attr/textAppearanceTitleSmall" />
-
-            <ImageButton
-                android:id="@+id/btnSelectAll"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_select_all"
-                android:src="@drawable/ic_check"
-                app:tint="?attr/colorOnSurfaceVariant" />
-
-            <ImageButton
-                android:id="@+id/btnAddToPlaylist"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/files_add_playlist"
-                android:src="@drawable/ic_playlist_add"
-                app:tint="?attr/colorOnSurfaceVariant" />
-
-            <ImageButton
-                android:id="@+id/btnSelectionClose"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/action_close"
-                android:src="@drawable/ic_close"
-                app:tint="?attr/colorOnSurfaceVariant" />
-        </LinearLayout>
-    </com.google.android.material.card.MaterialCardView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

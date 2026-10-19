@@ -21,6 +21,7 @@ import com.audiocat.files.RenamePlanner
 import com.audiocat.files.RenameTarget
 import com.audiocat.ui.common.FOLDER_UNAVAILABLE_MESSAGE
 import com.audiocat.ui.common.Formatters
+import com.audiocat.ui.playing.PlaylistPickerDialog
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
@@ -178,6 +179,12 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
         views.btnSelectionClose.setOnClickListener { exitSelection() }
         views.btnUnlist.setOnClickListener { setUnlisted(selectedPaths.toList(), unlisted = true) }
         views.btnRelist.setOnClickListener { setUnlisted(selectedPaths.toList(), unlisted = false) }
+        views.btnAddToPlaylist.setOnClickListener {
+            if (selectedPaths.isNotEmpty()) {
+                PlaylistPickerDialog.newInstance(selectedPaths.toList())
+                    .show(parentFragmentManager, PlaylistPickerDialog.TAG)
+            }
+        }
         views.btnBatchRename.setOnClickListener {
             if (selectedPaths.isNotEmpty()) {
                 BatchRenameDialog.newInstance(selectedPaths.toList())
@@ -230,6 +237,7 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
 
     private fun showActions(row: FileRow) {
         val labels = arrayOf(
+            getString(R.string.files_add_playlist),
             getString(R.string.files_info),
             getString(R.string.files_rename),
             getString(if (row.track.unlisted) R.string.files_relist else R.string.files_unlist),
@@ -239,9 +247,11 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
             .setTitle(row.title)
             .setItems(labels) { _, which ->
                 when (which) {
-                    0 -> showInfo(row)
-                    1 -> promptRename(row)
-                    2 -> setUnlisted(listOf(row.path), unlisted = !row.track.unlisted)
+                    0 -> PlaylistPickerDialog.newInstance(listOf(row.path))
+                        .show(parentFragmentManager, PlaylistPickerDialog.TAG)
+                    1 -> showInfo(row)
+                    2 -> promptRename(row)
+                    3 -> setUnlisted(listOf(row.path), unlisted = !row.track.unlisted)
                     else -> confirmDelete(listOf(row))
                 }
             }
