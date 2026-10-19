@@ -24,17 +24,10 @@
             android:paddingTop="8dp"
             android:paddingEnd="8dp">
 
-            <com.google.android.material.materialswitch.MaterialSwitch
-                android:id="@+id/togglePlaylists"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:contentDescription="@string/playlist_view_toggle" />
-
             <TextView
                 android:id="@+id/libraryHeader"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="4dp"
                 android:layout_weight="1"
                 android:text="@string/library_all_songs"
                 android:textAppearance="?attr/textAppearanceTitleMedium" />
@@ -120,22 +113,40 @@
         </com.google.android.material.card.MaterialCardView>
 
         <!--
-          Playlist lane. A fixed sibling of the list rather than a header item
-          inside it: the songs scroll underneath and the lane never moves, which
-          is the whole point and costs no nested-scrolling machinery. Hidden until
-          the user actually has a playlist.
+          Playlist lane row: a chevron expand button sits to the left of the
+          horizontal lane. It only appears when playlists exist; clicking it
+          flips between the lane and a full vertical list of all playlists.
         -->
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/playlistLane"
+        <LinearLayout
+            android:id="@+id/laneRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
             android:layout_marginBottom="6dp"
-            android:clipToPadding="false"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:scrollbars="none"
-            android:visibility="gone" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:visibility="gone">
+
+            <ImageButton
+                android:id="@+id/btnExpandPlaylists"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/playlist_expand"
+                android:padding="8dp"
+                android:scaleType="fitCenter"
+                android:src="@drawable/ic_expand_more"
+                app:tint="?attr/colorOnSurfaceVariant" />
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/playlistLane"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:clipToPadding="false"
+                android:paddingEnd="16dp"
+                android:scrollbars="none" />
+        </LinearLayout>
 
         <FrameLayout
             android:layout_width="match_parent"

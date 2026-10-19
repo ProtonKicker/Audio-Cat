@@ -105,7 +105,7 @@
     <!-- Playlists -->
     <string name="playlists_title">Playlists</string>
     <string name="playlist_new">New playlist</string>
-    <string name="playlist_view_toggle">Toggle playlists view</string>
+    <string name="playlist_expand">Expand playlists</string>
     <string name="playlist_picker">All playlists</string>
     <string name="playlist_name">Playlist name</string>
     <string name="playlist_create">Create</string>

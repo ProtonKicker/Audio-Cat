@@ -104,13 +104,18 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
                 showPlaylistsView.collect { showLists ->
                     binding.libraryList.isVisible = !showLists
                     binding.playlistsList.isVisible = showLists
-                    binding.playlistLane.isVisible = laneRows.isNotEmpty() && !showLists
                     binding.btnSearch.isVisible = !showLists
                     binding.btnSort.isVisible = !showLists
                     binding.btnFilter.isVisible = !showLists
                     binding.libraryHeader.setText(
                         if (showLists) R.string.playlists_title else R.string.library_all_songs,
                     )
+                    // The chevron icon points down when collapsed, up when expanded.
+                    binding.btnExpandPlaylists.setImageResource(
+                        if (showLists) R.drawable.ic_expand_less else R.drawable.ic_expand_more,
+                    )
+                    // Hide the chevron itself while in expanded playlists view.
+                    binding.laneRow.isVisible = laneRows.isNotEmpty() && !showLists
                 }
             }
         }
@@ -251,8 +256,8 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
         binding.btnSort.setOnClickListener { showSortDialog() }
         binding.btnFilter.setOnClickListener { showFilterDialog() }
         binding.btnNewPlaylist.setOnClickListener { promptNewPlaylist() }
-        binding.togglePlaylists.setOnCheckedChangeListener { _, isChecked ->
-            showPlaylistsView.value = isChecked
+        binding.btnExpandPlaylists.setOnClickListener {
+            showPlaylistsView.value = !showPlaylistsView.value
         }
     }
 
@@ -319,7 +324,9 @@ class PlaylistFragment : Fragment(R.layout.fragment_playlist) {
                         )
                         // Feed the vertical playlists list.
                         playlistsAdapter?.submitList(rows)
-                        // The view-toggle observer handles lane/button visibility.
+                        // The toggle observer fires once at startup before laneRows is
+                        // populated, so refresh laneRow visibility here too.
+                        binding.laneRow.isVisible = rows.isNotEmpty() && !showPlaylistsView.value
                     }
             }
         }
