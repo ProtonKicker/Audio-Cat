@@ -1,7 +1,6 @@
 package com.audiocat.files
 
 import android.app.Activity
-import android.app.PendingIntent
 import android.content.ContentResolver
 import android.content.Context
 import android.content.IntentSender
@@ -112,14 +111,10 @@ class FileOperations(
         for ((original, tempPath, target) in staged) {
             when (val result = renameOnDisk(tempPath, target)) {
                 is DiskRename.Ok -> {
-                    // Index the track under its new identity. Doing this inside a
-                    // transaction keeps playlist membership intact.
                     db.withTransaction { rekeyTrack(original, result.path) }
                     renamed++
                 }
                 is DiskRename.Failed -> {
-                    // Try to put the file back so the user does not end up with a
-                    // stray ".acrename" name.
                     renameOnDisk(tempPath, original)
                     failures += RenameFailure(original, result.reason)
                 }
@@ -128,13 +123,6 @@ class FileOperations(
         return RenameOutcome(renamed = renamed, failures = failures)
     }
 
-    /**
-     * Re-keys a track row after its file moved.
-     *
-     * Deleting the old row cascades into `playlist_tracks`, so memberships are
-     * captured first and re-inserted for the new path inside the same
-     * transaction. Playlists therefore survive a rename untouched.
-     */
     private suspend fun rekeyTrack(oldPath: String, newPath: String) {
         val existing = db.trackDao().byPath(oldPath) ?: return
         val memberships = db.playlistTrackDao().membershipsFor(oldPath)
@@ -161,13 +149,10 @@ class FileOperations(
         if (!source.exists()) return DiskRename.Failed("File no longer exists")
         val target = File(to)
 
-        // Fast path: legacy storage and app-owned directories still allow a
-        // direct rename and avoid a binder round-trip.
         if (source.canWrite() && !target.exists() && source.renameTo(target)) {
             return DiskRename.Ok(target.absolutePath)
         }
 
-        // Scoped-storage path: ask the media provider to move the document.
         return try {
             val renamed = DocumentsContract.renameDocument(resolver, documentUri(from), target.name)
             val resolved = renamed?.let(::pathFromDocumentUri)
@@ -189,7 +174,6 @@ class FileOperations(
         }
     }.getOrNull()
 
-    /** True when any target file is not directly writable by this app. */
     @RequiresApi(Build.VERSION_CODES.R)
     private fun needsConsent(movers: List<RenamePlanItem>): Boolean =
         movers.any { !File(it.from).canWrite() }
@@ -198,14 +182,12 @@ class FileOperations(
     private fun createWriteRequest(uris: List<Uri>): IntentSender =
         MediaStore.createWriteRequest(resolver, uris).intentSender
 
-    /** Reads tags for a batch-rename target so "use tags" can be offered. */
     suspend fun renameTargetsFor(paths: List<String>): List<RenameTarget> = withContext(Dispatchers.IO) {
         db.trackDao().byPaths(paths).map {
             RenameTarget(path = it.path, title = it.title, artist = it.artist)
         }
     }
 
-    /** Every path currently on disk, used to validate a plan before applying. */
     suspend fun existingPathsFor(paths: List<String>): Set<String> = withContext(Dispatchers.IO) {
         val directories = paths.map { it.substringBeforeLast('/', "") }.toSet()
         buildSet {
@@ -215,7 +197,6 @@ class FileOperations(
         }
     }
 
-    /** Removes decoded artwork for a track, if any. */
     suspend fun forgetArtwork(paths: List<String>) = withContext(Dispatchers.IO) {
         db.trackDao().byPaths(paths).forEach { track ->
             track.artPath?.let { File(context.cacheDir, "artwork/$it").delete() }
@@ -224,70 +205,92 @@ class FileOperations(
 
     /**
      * One file queued for deletion. Carries both its on-disk [path] and the
-     * MediaStore [uri] the scanner recorded for it: [deleteViaMediaStore] needs
-     * the content URI because the platform only honours a delete against the
-     * app's own MediaStore row, not a filesystem path.
+     * MediaStore [uri] the scanner recorded for it.
      */
     data class Deletable(val path: String, val uri: String)
 
     /**
-     * Deletes files from disk. Only ever called after an explicit confirmation,
-     * because this is the one irreversible operation in the app.
+     * Deletes files from disk. Only ever called after an explicit confirmation.
      *
      * Resolution order per file:
-     * 1. Physical [File.delete] when the app can write the path directly
-     *    (app-owned dirs, or legacy external storage where the manifest opts in).
-     * 2. MediaStore [ContentResolver.delete] using the row's own content URI. On
-     *    Android 11+ the platform throws a RecoverableSecurityException when the
-     *    file was not created by this app; we translate that into a
+     * 1. Physical [File.delete] when the app can write the path directly — this is
+     *    the case with [android.os.Environment.isExternalStorageManager] on
+     *    Android 11+, or with the manifest opt-in
+     *    `android:requestLegacyExternalStorage="true"` on Android 10.
+     * 2. MediaStore [ContentResolver.delete] using the row's own content URI.
+     *    On Android 11+ the platform throws a RecoverableSecurityException when
+     *    the file was not created by this app; we translate that into a
      *    [DeleteConsentRequired] so the UI can launch the system consent prompt.
      *
      * @throws DeleteConsentRequired when user consent is needed first.
      */
     suspend fun deleteFiles(targets: List<Deletable>): RenameOutcome = withContext(Dispatchers.IO) {
-        // Phase 1 — gather the rows we still need consent for. Needing consent
-        // for any one file means none are deleted yet so the user can consent to
-        // the whole set at once.
-        val needsConsent = ArrayList<Uri>()
-        for (target in targets) {
-            if (!canDeleteDirectly(target.path) && Build.VERSION.SDK_INT >= 30) {
-                needsConsent += Uri.parse(target.uri)
-            }
-        }
-        if (needsConsent.isNotEmpty()) {
-            throw DeleteConsentRequired(createDeleteRequest(needsConsent))
-        }
-
-        // Phase 2 — everything is either directly writable or the app created it.
+        // Phase 1 — pass each file through deleteOne. Accumulate any RSE
+        // IntentSender we are handed; we throw ONE [DeleteConsentRequired] so
+        // the UI can launch the system consent prompt for the whole set.
+        var consentSender: IntentSender? = null
         var deleted = 0
         val failures = mutableListOf<RenameFailure>()
         for (target in targets) {
-            val ok = deleteOne(target)
-            if (ok) deleted++ else failures += RenameFailure(target.path, "Could not delete file")
+            try {
+                if (deleteOne(target)) {
+                    deleted++
+                } else {
+                    failures += RenameFailure(target.path, "Could not delete file")
+                }
+            } catch (e: Exception) {
+                val sender = extractRseIntentSender(e)
+                if (sender != null) {
+                    consentSender = sender
+                } else {
+                    Log.w(TAG, "deleteFiles: non-recoverable failure for ${target.path}", e)
+                    failures += RenameFailure(target.path, e.message ?: "Could not delete")
+                }
+            }
+        }
+        if (consentSender != null) {
+            throw DeleteConsentRequired(consentSender)
         }
         if (deleted > 0) db.trackDao().deleteByPaths(targets.map { it.path })
         RenameOutcome(renamed = deleted, failures = failures)
-    }
-
-    /** True when the plain File API can remove [path] without MediaStore. */
-    private fun canDeleteDirectly(path: String): Boolean {
-        val file = File(path)
-        return file.exists() && file.canWrite()
     }
 
     /** Tries direct delete first, falls back to a MediaStore delete. */
     private fun deleteOne(target: Deletable): Boolean {
         val file = File(target.path)
         if (!file.exists()) return true
-        if (file.canWrite() && file.delete()) return true
-        return runCatching {
-            resolver.delete(Uri.parse(target.uri), null, null) > 0
-        }.getOrDefault(false)
+        if (file.canWrite()) {
+            val ok = file.delete()
+            if (ok) return true
+            // Direct delete failed; some devices report canWrite=true but the
+            // file provider still refuses — fall through to MediaStore.
+        }
+        val uri = Uri.parse(target.uri)
+        val count = resolver.delete(uri, null, null)
+        return count > 0
     }
 
-    @RequiresApi(Build.VERSION_CODES.R)
-    private fun createDeleteRequest(uris: List<Uri>): IntentSender =
-        MediaStore.createDeleteRequest(resolver, uris).intentSender
+    /**
+     * On Android 11+ the platform may throw RecoverableSecurityException with
+     * an embedded IntentSender for the consent prompt. Reflect into it because
+     * the stable API for batching consent was only added in the same release.
+     */
+    private fun extractRseIntentSender(e: Throwable): IntentSender? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        var current: Throwable? = e
+        while (current != null) {
+            if (current.javaClass.simpleName == "RecoverableSecurityException") {
+                val m = runCatching {
+                    current.javaClass.getMethod("getIntentSender")
+                }.getOrNull() ?: runCatching {
+                    current.javaClass.getDeclaredMethod("getIntentSender").apply { isAccessible = true }
+                }.getOrNull() ?: return null
+                return runCatching { m.invoke(current) as? IntentSender }.getOrNull()
+            }
+            current = current.cause
+        }
+        return null
+    }
 
     private companion object {
         const val TAG = "FileOperations"
