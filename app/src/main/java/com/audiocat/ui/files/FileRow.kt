@@ -15,6 +15,9 @@ data class FileRow(val track: Track) {
     /** Stable identity, used for selection because titles can repeat. */
     val path: String get() = track.path
 
+    /** MediaStore content:// URI, used by the MediaStore delete path. */
+    val uri: String get() = track.uri
+
     val title: String get() = track.displayTitle
 
     /** "Artist · 12.3 MB", or just the size when the file carries no artist. */

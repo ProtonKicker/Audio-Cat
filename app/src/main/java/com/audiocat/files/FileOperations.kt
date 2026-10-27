@@ -1,5 +1,6 @@
 package com.audiocat.files
 
+import android.app.Activity
 import android.app.PendingIntent
 import android.content.ContentResolver
 import android.content.Context
@@ -34,6 +35,14 @@ data class RenameOutcome(
  * calls [FileOperations.applyRenamePlan] again.
  */
 class WriteConsentRequired(val intentSender: IntentSender) : Exception("write consent required")
+
+/**
+ * Raised when Android requires the user to consent before deleting one or more
+ * media files the app did not create. The caller launches [intentSender]; once
+ * the platform result arrives it calls [FileOperations.deleteFiles] again with the
+ * same list.
+ */
+class DeleteConsentRequired(val intentSender: IntentSender) : Exception("delete consent required")
 
 /**
  * All disk-touching operations for the File Management tab.
@@ -214,28 +223,71 @@ class FileOperations(
     }
 
     /**
+     * One file queued for deletion. Carries both its on-disk [path] and the
+     * MediaStore [uri] the scanner recorded for it: [deleteViaMediaStore] needs
+     * the content URI because the platform only honours a delete against the
+     * app's own MediaStore row, not a filesystem path.
+     */
+    data class Deletable(val path: String, val uri: String)
+
+    /**
      * Deletes files from disk. Only ever called after an explicit confirmation,
      * because this is the one irreversible operation in the app.
+     *
+     * Resolution order per file:
+     * 1. Physical [File.delete] when the app can write the path directly
+     *    (app-owned dirs, or legacy external storage where the manifest opts in).
+     * 2. MediaStore [ContentResolver.delete] using the row's own content URI. On
+     *    Android 11+ the platform throws a RecoverableSecurityException when the
+     *    file was not created by this app; we translate that into a
+     *    [DeleteConsentRequired] so the UI can launch the system consent prompt.
+     *
+     * @throws DeleteConsentRequired when user consent is needed first.
      */
-    suspend fun deleteFiles(paths: List<String>): RenameOutcome = withContext(Dispatchers.IO) {
+    suspend fun deleteFiles(targets: List<Deletable>): RenameOutcome = withContext(Dispatchers.IO) {
+        // Phase 1 — gather the rows we still need consent for. Needing consent
+        // for any one file means none are deleted yet so the user can consent to
+        // the whole set at once.
+        val needsConsent = ArrayList<Uri>()
+        for (target in targets) {
+            if (!canDeleteDirectly(target.path) && Build.VERSION.SDK_INT >= 30) {
+                needsConsent += Uri.parse(target.uri)
+            }
+        }
+        if (needsConsent.isNotEmpty()) {
+            throw DeleteConsentRequired(createDeleteRequest(needsConsent))
+        }
+
+        // Phase 2 — everything is either directly writable or the app created it.
         var deleted = 0
         val failures = mutableListOf<RenameFailure>()
-        paths.forEach { path ->
-            val file = File(path)
-            val ok = when {
-                !file.exists() -> true
-                file.canWrite() && file.delete() -> true
-                else -> deleteViaResolver(path)
-            }
-            if (ok) deleted++ else failures += RenameFailure(path, "Could not delete file")
+        for (target in targets) {
+            val ok = deleteOne(target)
+            if (ok) deleted++ else failures += RenameFailure(target.path, "Could not delete file")
         }
-        if (deleted > 0) db.trackDao().deleteByPaths(paths)
+        if (deleted > 0) db.trackDao().deleteByPaths(targets.map { it.path })
         RenameOutcome(renamed = deleted, failures = failures)
     }
 
-    private fun deleteViaResolver(path: String): Boolean = runCatching {
-        resolver.delete(documentUri(path), null, null) > 0
-    }.getOrDefault(false)
+    /** True when the plain File API can remove [path] without MediaStore. */
+    private fun canDeleteDirectly(path: String): Boolean {
+        val file = File(path)
+        return file.exists() && file.canWrite()
+    }
+
+    /** Tries direct delete first, falls back to a MediaStore delete. */
+    private fun deleteOne(target: Deletable): Boolean {
+        val file = File(target.path)
+        if (!file.exists()) return true
+        if (file.canWrite() && file.delete()) return true
+        return runCatching {
+            resolver.delete(Uri.parse(target.uri), null, null) > 0
+        }.getOrDefault(false)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.R)
+    private fun createDeleteRequest(uris: List<Uri>): IntentSender =
+        MediaStore.createDeleteRequest(resolver, uris).intentSender
 
     private companion object {
         const val TAG = "FileOperations"

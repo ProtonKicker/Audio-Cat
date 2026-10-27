@@ -1,8 +1,11 @@
 package com.audiocat.ui.files
 
+import android.app.Activity
 import android.os.Bundle
 import android.view.View
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.ActivityResultLauncher
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
@@ -10,11 +13,14 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.audiocat.AudioCatApp
+import kotlinx.coroutines.CoroutineScope
 import com.audiocat.R
 import com.audiocat.data.db.FolderMode
 import com.audiocat.data.db.Track
 import com.audiocat.databinding.DialogTextInputBinding
 import com.audiocat.databinding.FragmentFilesBinding
+import com.audiocat.files.DeleteConsentRequired
+import com.audiocat.files.FileOperations
 import com.audiocat.files.RenameOutcome
 import com.audiocat.files.RenamePattern
 import com.audiocat.files.RenamePlanner
@@ -45,6 +51,9 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
 
     /** Launches the write-consent prompt and retries a rename. */
     private lateinit var renamer: RenameRunner
+
+    /** Launches the delete-consent prompt and retries a delete. */
+    private lateinit var deleter: DeleteRunner
 
     /** Every row from the database, before the chip filter is applied. */
     private var allRows: List<FileRow> = emptyList()
@@ -91,6 +100,7 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
         views.filesList.setHasFixedSize(true)
 
         renamer = RenameRunner(this, viewLifecycleOwner.lifecycleScope, ::reportRename)
+        deleter = DeleteRunner(this, viewLifecycleOwner.lifecycleScope, ::reportDelete)
 
         buildFilters(views)
         wireSelectionBar(views)
@@ -353,19 +363,19 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
     }
 
     private fun deleteFiles(rows: List<FileRow>) {
-        val paths = rows.map { it.path }
-        viewLifecycleOwner.lifecycleScope.launch {
-            val outcome = app.fileOperations.deleteFiles(paths)
-            exitSelection()
-            // Delete feedback has no string resource; the count is the message.
-            snack(
-                if (outcome.failures.isEmpty()) {
-                    "Deleted ${outcome.renamed} file(s)"
-                } else {
-                    "${outcome.failures.size} file(s) could not be deleted"
-                },
-            )
-        }
+        val targets = rows.map { FileOperations.Deletable(it.path, it.uri) }
+        deleter.delete(targets)
+    }
+
+    private fun reportDelete(outcome: RenameOutcome) {
+        exitSelection()
+        snack(
+            if (outcome.failures.isEmpty()) {
+                "Deleted ${outcome.renamed} file(s)"
+            } else {
+                "${outcome.failures.size} file(s) could not be deleted"
+            },
+        )
     }
 
     private fun snack(message: String) {
@@ -390,4 +400,43 @@ private enum class FilesFilter(val label: String) {
     UNLISTED("Unlisted"),
     AUDIO("Audio"),
     VIDEO("Video"),
+}
+
+/**
+ * Wraps [FileOperations.deleteFiles] so the system delete-consent prompt can be
+ * launched and the deletion retried when the user grants it. Mirrors
+ * [RenameRunner]'s structure.
+ */
+internal class DeleteRunner(
+    fragment: Fragment,
+    private val scope: CoroutineScope,
+    private val onFinished: (RenameOutcome) -> Unit,
+) {
+    private val fileOperations = AudioCatApp.get().fileOperations
+
+    private var pending: List<FileOperations.Deletable>? = null
+
+    private val consentLauncher: ActivityResultLauncher<IntentSenderRequest> =
+        fragment.registerForActivityResult(
+            ActivityResultContracts.StartIntentSenderForResult(),
+        ) { result ->
+            val targets = pending ?: return@registerForActivityResult
+            pending = null
+            if (result.resultCode == Activity.RESULT_OK) {
+                delete(targets)
+            } else {
+                onFinished(RenameOutcome(renamed = 0))
+            }
+        }
+
+    fun delete(targets: List<FileOperations.Deletable>) {
+        scope.launch {
+            try {
+                onFinished(fileOperations.deleteFiles(targets))
+            } catch (e: DeleteConsentRequired) {
+                pending = targets
+                consentLauncher.launch(IntentSenderRequest.Builder(e.intentSender).build())
+            }
+        }
+    }
 }
