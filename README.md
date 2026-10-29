@@ -18,7 +18,7 @@ Audio Cat is a fully offline Android audio player whose purpose is to play the *
 |-------|----------|
 | ![Files tab](screenshots/files.png) | ![Settings tab](screenshots/settings.png) |
 
-*Screenshots taken on Honor 9X (Android 10), light theme.*
+*Screenshots taken on Honor 9X (Android 10), light theme, version 1.1.1.*
 
 </div>
 
