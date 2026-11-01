@@ -1,8 +1,8 @@
 # Audio Cat — 任务板与项目状态
 
-> 最后更新：2026-10-31  
-> 当前版本：1.1.5（开发中）  
-> 包名：`com.audiocat.debug`（applicationIdSuffix `.debug`）
+> 最后更新：2026-11-01  
+> 当前版本：1.1.6（已发布）  
+> 包名：`com.audiocat`（release） / `com.audiocat.debug`（applicationIdSuffix `.debug`）
 
 ---
 
@@ -64,6 +64,11 @@ Audio Cat 是一款轻量级、完全离线的 Android 音频播放器，专为�
 **根因**：MediaController 连接和 service 恢复队列（含数据库查询）是异步的，期间 player timeline 为空，`refreshQueue()` 会把 `currentTrack` 置空，界面就渲染空态。  
 **修复**：`PlayerConnection` 启动时同步预填上次会话快照（`QueueRestore.provisional`），空 timeline 时若 `restoringSnapshot` 为真则不清空状态；快照同时保存 title/artist，首帧即显示真实元数据。
 
+### Bug 8 — 冷启动底部导航图标先高后沉（跳动）
+**现象**：App 冷启动时 Player/Playlist/Files/Settings 四个底部导航图标先显示在偏高的位置，随后下沉到最终位置。  
+**根因**：Material `BottomNavigationView` 的选中态"active indicator"（选中项背板/胶囊）比图标晚一步初始化，其出现时改变 item 内部布局高度，把图标整体下推（实测冷启动首帧 iconTop=0，约 500ms 后变为 13）。  
+**修复**：`MainActivity.setUpBottomNav()` 中调用 `binding.bottomNav.isItemActiveIndicatorEnabled = false` 禁用该指示器，消除延迟布局变化。设备验证：冷启动 dump1（启动即抓取）与 dump2（+800ms）nav/icon/label 的 bounds 完全一致，无跳动。权衡：选中项不再显示背板胶囊，仅靠图标与文字颜色区分。
+
 ---
 
 ## 已实现的新功能 🎯
@@ -82,11 +87,16 @@ Audio Cat 是一款轻量级、完全离线的 Android 音频播放器，专为�
 ### 功能 4 — 首帧只构建前两页，其余页在首帧后预热
 ViewPager2 原本在首帧前就把 4 个 Tab 页全部构建+布局（Files/Settings 最重），约占冷启动 200ms+。现在首帧只构建 Player/Playlist 两页，`doOnPreDraw` 在首帧绘制完成后把 `offscreenPageLimit` 升回 3 预热其余页。实测 Redmi Turbo 4 Pro 冷启动 TotalTime 从 ~880-950ms 降到 ~656-713ms（-25%），首帧后约 270ms 内四页全部就绪，Tab 切换依旧即时。
 
+### 功能 5 — 左右滑动切换 Tab
+栅格区域（页面空白处）左右滑动可直接切 Tab，无需点击底部导航。`MainActivity.setUpPager()` 设置 `binding.pager.isUserInputEnabled = true`（此前为 false 禁用了手势）。UI 层级验证：pager `scrollable=true`。注意：页面内可横向滚动的列表（如 Playlist lane）的横滑手势会由内层控件消费。需真机手指验证手感。
+
 ---
 
 ## 待手动验证（在 Redmi Turbo 4 Pro 上）🔴
 
 - [x] **冷启动恢复**：杀掉进程重启后立即显示上次歌曲，无"Nothing playing"闪屏（Redmi Turbo 4 Pro）
+- [x] **冷启动底部导航无跳动**：dump 首帧 vs +800ms bounds 一致（com.audiocat 1.1.6 release 验证）
+- [x] **左右滑动切 Tab**：pager scrollable=true（真机手感待手指确认）
 - [ ] **开关切换**：所有设置开关正常工作
 - [ ] **切歌自动播放**：切歌始终自动播放
 - [ ] **封面加载**：扫描后封面正常显示
