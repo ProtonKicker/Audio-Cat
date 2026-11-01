@@ -12,11 +12,11 @@ Audio Cat is a fully offline Android audio player whose purpose is to play the *
 
 | Player | Playlist |
 |--------|----------|
-| ![Player tab](screenshots/player.png) | ![Playlist tab](screenshots/playlist.png) |
+| ![Player tab](screenshots/player.png?v=C700FD7A) | ![Playlist tab](screenshots/playlist.png?v=691E8F3E) |
 
 | Files | Settings |
 |-------|----------|
-| ![Files tab](screenshots/files.png) | ![Settings tab](screenshots/settings.png) |
+| ![Files tab](screenshots/files.png?v=9B2A236B) | ![Settings tab](screenshots/settings.png?v=DE6C2E76) |
 
 *Screenshots taken on Honor 9X (Android 10), light theme, version 1.1.7.*
 
