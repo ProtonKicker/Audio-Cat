@@ -25,6 +25,7 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import com.audiocat.AudioCatApp
 import com.audiocat.MainActivity
 import com.audiocat.data.AppSettings
 import com.audiocat.data.RepeatMode
@@ -631,7 +632,11 @@ class PlaybackService : MediaSessionService() {
      * the user and is also blocked by background-start restrictions.
      */
     private fun restoreQueue() {
-        val snapshot = stateStore.load() ?: return
+        // Hand off to the snapshot parsed on an IO thread at process start so
+        // the service is created without re-reading and re-parsing the file on
+        // this thread; falls back to the direct read when the warm-up raced past.
+        val warm = (applicationContext as? AudioCatApp)?.snapshotAtStartup()
+        val snapshot = warm ?: stateStore.load() ?: return
         // The timeline is empty until this coroutine finishes, so the flag tells
         // the UI that the emptiness is a restore in flight rather than nothing
         // to play.

@@ -1,7 +1,7 @@
 # Audio Cat — 任务板与项目状态
 
 > 最后更新：2026-10-31  
-> 当前版本：1.1.3（开发中）  
+> 当前版本：1.1.4（开发中）  
 > 包名：`com.audiocat.debug`（applicationIdSuffix `.debug`）
 
 ---
@@ -75,6 +75,9 @@ Audio Cat 是一款轻量级、完全离线的 Android 音频播放器，专为�
 ### 功能 2 — Playlist 折叠下拉菜单
 在 header 区域新增下拉按钮，点击弹出 `ListPopupWindow`，以逐行列表展示所有 playlist（不含歌曲），点击即切换到对应 playlist。  
 **实现**：header 新增 `btnPlaylistPicker`；`PlaylistFragment.showPlaylistPicker()` 创建 ListPopupWindow（宽度 60% 或 200dp）；维护 `laneRows` 快照。
+
+### 功能 3 — 冷启动性能优化
+播放快照 JSON（约 34KB / 520 条）由 `AudioCatApp.onCreate` 在 IO 线程预热解析一次，`PlayerConnection` 的预填首帧与 `PlaybackService` 的队列恢复都复用这份缓存，首帧主线程不再解析 JSON，launch 时间约 900ms（无可见回归）。
 
 ---
 

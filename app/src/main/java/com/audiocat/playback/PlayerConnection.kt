@@ -94,7 +94,10 @@ class PlayerConnection(private val context: Context) {
      * playing. Titles fall back to the file name until the library row arrives.
      */
     private fun preseedFromSnapshot() {
-        val snapshot = snapshotStore.load() ?: return
+        // Prefer the snapshot parsed on an IO thread at process start so the
+        // first frame never parses the JSON itself; fall back to reading the
+        // file here only when the warm-up has not landed yet.
+        val snapshot = app?.snapshotAtStartup() ?: snapshotStore.load() ?: return
         val provisional = QueueRestore.provisional(snapshot) ?: return
         _queue.value = provisional
         _currentTrack.value = provisional.current
