@@ -1,0 +1,5 @@
+
+# Screenshots are binary; never let git normalize line endings in them.
+*.png binary
+*.jpg binary
+*.apk binary

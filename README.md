@@ -10,17 +10,34 @@ Audio Cat is a fully offline Android audio player whose purpose is to play the *
 
 <div align="center">
 
-| Player | Playlist |
-|--------|----------|
-| ![Player tab](screenshots/player.png?v=C700FD7A) | ![Playlist tab](screenshots/playlist.png?v=691E8F3E) |
+| Player | Play queue |
+|--------|------------|
+| ![Player tab](screenshots/01-player.png) | ![Play queue sheet](screenshots/03-queue-sheet.png) |
 
-| Files | Settings |
-|-------|----------|
-| ![Files tab](screenshots/files.png?v=9B2A236B) | ![Settings tab](screenshots/settings.png?v=DE6C2E76) |
+| Playlist | Files |
+|---------|-------|
+| ![Playlist tab](screenshots/04-playlist.png) | ![Files tab](screenshots/05-files.png) |
 
-*Screenshots taken on Honor 9X (Android 10), light theme, version 1.1.7.*
+| Settings | Settings (appearance & advanced) |
+|----------|---------------------------------|
+| ![Settings tab](screenshots/06-settings.png) | ![Settings scrolled](screenshots/07-settings-scrolled.png) |
 
 </div>
+
+<div align="center">
+
+| Cover sheet |
+
+|----------------|
+| ![Cover sheet](screenshots/02-cover-sheet.png) |
+
+</div>
+
+*Screenshots taken on a Redmi Turbo 4 Pro (Android 16 / HyperOS), dark theme, release build
+version 1.1.7, with a real 520-track library.*
+
+*Privacy: the system status bar is cropped, and the track titles, artist names and cover
+artwork that came from the test phone's own media are mosaicked. Nothing personal is shown.*
 
 ## Features
 
@@ -153,6 +170,7 @@ The test sources live in [app/src/test](app/src/test):
 - **Verified on a real phone (Honor 9X, Android 10/EMUI):** first scan indexes MediaStore audio + video containers, enrichment extracts embedded artwork, tapping a row plays real audio through the notification/lockscreen session, pause and queue restore across process death work, and all four tabs render. This pass caught three device-only bugs the JVM suite could not: a missing `LayoutManager` on the library list, a bottom-nav mapping that never moved the pager, and millihertz EQ labels.
 - **Verified on the release build (minified + resource-shrunk), on the same phone:** it installs, all four tabs render with real data, tap-to-play reaches `state=PLAYING` with the app owning the audio focus, artist and album come through from the audio collection, a gallery image can be attached as a cover and survives the gallery file being deleted, and removing that cover falls back cleanly. This pass caught a crash the debug build never showed: the scan-finished callback was delivered on the scan's worker thread, so the release build threw `IllegalStateException` (media controller off the main thread) the moment a custom cover was removed.
 - **Verified on a real phone (Redmi Turbo 4 Pro, Android 16):** the queue restore was re-checked on the release build with a 520-track queue: the queue and the exact position come back across repeated quit/relaunch cycles, a queue entry that the library no longer has still restores on the *same* track instead of the next one, and a queue whose entries are entirely unknown to the library still comes back instead of showing "nothing playing". 137 JVM/Robolectric tests pass, `lintDebug` reports zero error-severity findings, and the release APK assembles at 2.6 MB with no `android.permission.INTERNET` in the merged manifest.
+- **Release build rebuilt and reinstalled on the Redmi Turbo 4 Pro (Android 16 / HyperOS):** `:app:assembleRelease` and `:app:testDebugUnitTest` both succeed with JDK 21 (Gradle 8.14.3, AGP via the version catalogue); the resulting signed release APK installs over the previous one, the library indexes 520 files (40.9 GB), all four tabs render, the play queue sheet lists the restored queue, and the settings screen reports version 1.1.7. Every screenshot in this README was taken from that build on that device.
 - **Still unverified on-device:** the Android 11+ scoped-storage rename consent dialog (the test phone runs Android 10, where legacy storage applies), Bluetooth headset buttons, and effect behaviour on other vendors' decoder stacks.
 - [robolectric.properties](app/src/test/resources/robolectric.properties) pins `sdk=35` because Robolectric does not yet support API 36.
 
