@@ -143,6 +143,10 @@ class PlayerConnection(private val context: Context) {
     /**
      * Rebuilds the queue snapshot from the session's media items, resolving each
      * item back to its library row so the UI has full metadata and artwork.
+     *
+     * A media item with no library row is still shown: the media item carries
+     * the title and artist the app put there, so the player never falls back
+     * to "nothing playing" just because the catalogue lost a file.
      */
     private fun refreshQueue() {
         val player = controller ?: return
@@ -160,7 +164,9 @@ class PlayerConnection(private val context: Context) {
         scope.launch {
             val tracks = app?.database?.trackDao()?.byPaths(paths).orEmpty()
             val byPath = tracks.associateBy { it.path }
-            val ordered = paths.mapNotNull { byPath[it] }
+            val ordered = paths.mapIndexed { index, path ->
+                byPath[path] ?: placeholderTrack(path, index)
+            }
             if (ordered.isEmpty()) {
                 _queue.value = PlaybackQueue()
                 _currentTrack.value = null
@@ -176,6 +182,25 @@ class PlayerConnection(private val context: Context) {
             )
             _currentTrack.value = ordered.getOrNull(index)
         }
+    }
+
+    /**
+     * Builds a stand-in track for a media item the library has no row for.
+     *
+     * The metadata comes from the media item itself, which the app populated
+     * when the queue was built, so the UI keeps showing what is playing.
+     */
+    private fun placeholderTrack(path: String, index: Int): Track {
+        val item = controller?.getMediaItemAt(index)
+        val metadata = item?.mediaMetadata
+        return Track(
+            path = path,
+            uri = item?.localConfiguration?.uri?.toString().orEmpty(),
+            title = metadata?.title?.toString()?.takeIf { it.isNotBlank() }
+                ?: path.substringAfterLast('/'),
+            artist = metadata?.artist?.toString(),
+            album = metadata?.albumTitle?.toString(),
+        )
     }
 
     // ---------------------------------------------------------------------

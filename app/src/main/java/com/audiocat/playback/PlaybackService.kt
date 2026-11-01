@@ -404,6 +404,9 @@ class PlaybackService : MediaSessionService() {
         queue = QueueEngine.clear()
         player?.clearMediaItems()
         player?.stop()
+        // The user asked for an empty queue, so the saved snapshot goes with
+        // it. This is the only place the snapshot is deleted.
+        stateStore.clear()
     }
 
     /** Applies playback speed and pitch in real time. */
@@ -597,7 +600,10 @@ class PlaybackService : MediaSessionService() {
     private fun persistState() {
         val player = player ?: return
         if (queue.isEmpty) {
-            stateStore.clear()
+            // An empty queue is not a reason to drop the saved snapshot: the
+            // queue is also empty while a restore is still in flight, and
+            // deleting the file then would lose the previous session for
+            // good. Only an explicit "clear queue" removes it.
             return
         }
         stateStore.save(queue, player.currentPosition)
@@ -606,29 +612,30 @@ class PlaybackService : MediaSessionService() {
     /**
      * Rebuilds the previous queue after the service is recreated.
      *
+     * The snapshot carries the path and the media URI of every entry, so the
+     * queue comes back even when the library database has no row for it any
+     * more - a renamed or deleted file must not cost the user their queue.
+     * The database is read only to fill in titles and artwork.
+     *
      * The player is left paused: restoring into a playing state would surprise
      * the user and is also blocked by background-start restrictions.
      */
     private fun restoreQueue() {
         val snapshot = stateStore.load() ?: return
         scope.launch {
-            val tracks = database.trackDao().byPaths(snapshot.paths)
-            if (tracks.isEmpty()) return@launch
-            // Preserve the saved order, which may be a shuffle permutation.
-            val byPath = tracks.associateBy { it.path }
-            val ordered = snapshot.paths.mapNotNull { byPath[it] }
-            if (ordered.isEmpty()) return@launch
+            val rows = database.trackDao().byPaths(snapshot.paths).associateBy { it.path }
+            val plan = QueueRestore.plan(snapshot.items, snapshot.cursor, rows) ?: return@launch
             val restored = PlaybackQueue(
-                tracks = ordered,
-                order = ordered.indices.toList(),
-                cursor = snapshot.cursor.coerceIn(0, ordered.lastIndex),
+                tracks = plan.tracks,
+                order = plan.tracks.indices.toList(),
+                cursor = plan.cursor,
                 shuffle = snapshot.shuffle,
                 repeat = runCatching { RepeatMode.valueOf(snapshot.repeat) }
                     .getOrDefault(RepeatMode.OFF),
             )
             queue = restored
             val player = player ?: return@launch
-            player.setMediaItems(ordered.map { it.toMediaItem() }, restored.cursor, snapshot.positionMs)
+            player.setMediaItems(plan.tracks.map { it.toMediaItem() }, plan.cursor, snapshot.positionMs)
             player.prepare()
             // Keep the restored queue's repeat mode consistent with settings.
             setRepeat(settings.current.repeatMode)

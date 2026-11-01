@@ -2,10 +2,10 @@
 <SmellBaseline>
   <ManuallySuppressedIssues/>
   <CurrentIssues>
+    <ID>ComplexCondition:PlaybackService.kt$PlaybackService$from &lt; 0 || from &gt;= player.mediaItemCount || target &lt; 0 || target &gt;= player.mediaItemCount</ID>
     <ID>CyclomaticComplexMethod:LibraryScanner.kt$ScanPlanner$fun plan( candidates: List&lt;ScanCandidate&gt;, existing: Map&lt;String, Track&gt;, includedFolders: List&lt;String&gt;, excludedFolders: List&lt;String&gt;, force: Boolean, ): ScanPlan</ID>
     <ID>CyclomaticComplexMethod:RenamePlanner.kt$RenamePlanner$fun plan( targets: List&lt;RenameTarget&gt;, pattern: RenamePattern, occupiedExisting: Set&lt;String&gt; = emptySet(), ): List&lt;RenamePlanItem&gt;</ID>
     <ID>FunctionOnlyReturningConstant:LibraryScanner.kt$LibraryScanner.Companion$fun volumeRoot(): String</ID>
-    <ID>LongMethod:LibraryScanner.kt$LibraryScanner$private fun queryMediaStore(includeFolders: List&lt;String&gt;): List&lt;ScanCandidate&gt;</ID>
     <ID>LongMethod:SettingsFragment.kt$SettingsFragment$private fun render()</ID>
     <ID>LongParameterList:LibraryDatabaseTest.kt$LibraryDatabaseTest$( path: String, title: String = path.substringAfterLast('/'), artist: String? = null, unlisted: Boolean = false, size: Long = 1_000L, modified: Long = 10L, dateAdded: Long = 1L, )</ID>
     <ID>LongParameterList:LibraryScanner.kt$LibraryScanner$( includeFolders: List&lt;String&gt;, excludeFolders: List&lt;String&gt;, force: Boolean = false, artBudget: Int = DEFAULT_ART_BUDGET, artMaxPx: Int = ArtworkStore.DEFAULT_MAX_PX, /** Applies to files seen for the first time; see [NewFilePolicy]. */ newFilePolicy: NewFilePolicy = NewFilePolicy.ADD, onProgress: (scanned: Int, total: Int) -&gt; Unit = { _, _ -&gt; }, )</ID>
@@ -13,6 +13,7 @@
     <ID>LongParameterList:TrackDao.kt$TrackDao$( path: String, artPath: String?, sampleRate: Int, bitRate: Int, channelCount: Int, lyrics: String?, )</ID>
     <ID>LoopWithTooManyJumpStatements:LibraryScanner.kt$LibraryScanner$while</ID>
     <ID>LoopWithTooManyJumpStatements:LibraryScanner.kt$ScanPlanner$for</ID>
+    <ID>LoopWithTooManyJumpStatements:PlaybackService.kt$PlaybackService$for</ID>
     <ID>LoopWithTooManyJumpStatements:RenamePlanner.kt$RenamePlanner$while</ID>
     <ID>LoopWithTooManyJumpStatements:TrackMetadataReader.kt$TrackMetadataReader$for</ID>
     <ID>MagicNumber:ArtworkStore.kt$ArtworkStore$24</ID>
@@ -38,6 +39,7 @@
     <ID>MagicNumber:EqBandAdapter.kt$1_000</ID>
     <ID>MagicNumber:EqBandAdapter.kt$1_000f</ID>
     <ID>MagicNumber:FilesFragment.kt$FilesFragment$1000</ID>
+    <ID>MagicNumber:FilesFragment.kt$FilesFragment$3</ID>
     <ID>MagicNumber:Formatters.kt$Formatters$1000</ID>
     <ID>MagicNumber:Formatters.kt$Formatters$1000.0</ID>
     <ID>MagicNumber:Formatters.kt$Formatters$12</ID>
@@ -57,7 +59,6 @@
     <ID>MagicNumber:PlayerFragment.kt$PlayerFragment.&lt;no name provided&gt;$1000</ID>
     <ID>MagicNumber:PlayerFragment.kt$PlayerFragment.&lt;no name provided&gt;$1000f</ID>
     <ID>MagicNumber:PlaylistFragment.kt$PlaylistFragment$1000</ID>
-    <ID>MagicNumber:PlaylistFragment.kt$PlaylistFragment$3</ID>
     <ID>MagicNumber:RenamePlanner.kt$RenamePlanner$10</ID>
     <ID>MagicNumber:SettingsFragment.kt$SettingsFragment$1000</ID>
     <ID>MagicNumber:SettingsFragment.kt$SettingsFragment$20</ID>
@@ -76,6 +77,7 @@
     <ID>ReturnCount:Formatters.kt$Formatters$@Suppress("DEPRECATION") fun treeUriToPath(context: Context, uri: Uri): String?</ID>
     <ID>ReturnCount:Formatters.kt$Formatters$fun frequency(hz: Int): String</ID>
     <ID>ReturnCount:Formatters.kt$Formatters$fun relativeTime(epochMs: Long): String</ID>
+    <ID>ReturnCount:LibraryScanner.kt$LibraryScanner$private fun volumeOf(path: String): String</ID>
     <ID>ReturnCount:LibraryScanner.kt$LibraryScanner$private suspend fun enrichBacklog( plan: ScanPlan, artBudget: Int, maxPx: Int, ): Int</ID>
     <ID>ReturnCount:LibraryScanner.kt$ScanPlanner$fun isInside(path: String, folder: String): Boolean</ID>
     <ID>ReturnCount:PlaybackQueue.kt$QueueEngine$fun jumpToTrack(queue: PlaybackQueue, trackIndex: Int): PlaybackQueue</ID>
@@ -85,6 +87,8 @@
     <ID>ReturnCount:PlaybackQueue.kt$QueueEngine$fun removeAt(queue: PlaybackQueue, playOrderPosition: Int): PlaybackQueue</ID>
     <ID>ReturnCount:PlaybackQueue.kt$QueueEngine$fun setShuffle(queue: PlaybackQueue, enabled: Boolean): PlaybackQueue</ID>
     <ID>ReturnCount:PlaybackService.kt$PlaybackService$fun jumpToQueuePosition(playOrderPosition: Int): Boolean</ID>
+    <ID>ReturnCount:PlaybackService.kt$PlaybackService$fun moveInQueue(from: Int, to: Int)</ID>
+    <ID>ReturnCount:PlaybackService.kt$PlaybackService$fun removeFromQueue(playOrderPosition: Int)</ID>
     <ID>ReturnCount:PlaybackService.kt$PlaybackService$private fun applyCursor(next: PlaybackQueue)</ID>
     <ID>ReturnCount:PlaylistDetailSheet.kt$PlaylistDetailSheet.&lt;no name provided&gt;$override fun onMove( recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder, target: RecyclerView.ViewHolder, ): Boolean</ID>
     <ID>ReturnCount:RenamePlanner.kt$RenamePlanner$fun validate(plan: List&lt;RenamePlanItem&gt;, existingPaths: Set&lt;String&gt;): String?</ID>
@@ -109,8 +113,11 @@
     <ID>TooManyFunctions:SettingsFragment.kt$SettingsFragment : Fragment</ID>
     <ID>TooManyFunctions:TrackDao.kt$TrackDao</ID>
     <ID>UnusedParameter:Formatters.kt$Formatters$context: Context</ID>
-    <ID>UnusedParameter:LibraryScanner.kt$LibraryScanner$includeFolders: List&lt;String&gt;</ID>
+    <ID>UnusedParameter:PlaylistFragment.kt$PlaylistFragment$binding: FragmentPlaylistBinding</ID>
     <ID>UnusedParameter:SettingsFragment.kt$SettingsFragment$checkedIndex: Int</ID>
+    <ID>UnusedPrivateMember:PlaylistFragment.kt$PlaylistFragment$private fun promptRename(playlist: Playlist)</ID>
+    <ID>UnusedPrivateMember:PlaylistFragment.kt$PlaylistFragment$private fun snack(@StringRes message: Int)</ID>
     <ID>UnusedPrivateProperty:LibraryScanner.kt$private const val TAG = "LibraryScanner"</ID>
+    <ID>UnusedPrivateProperty:PlaylistLaneAdapter.kt$PlaylistLaneAdapter$private val onMoved: (from: Int, to: Int) -&gt; Unit = { _, _ -&gt; }</ID>
   </CurrentIssues>
 </SmellBaseline>
