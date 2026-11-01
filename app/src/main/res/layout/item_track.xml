@@ -103,6 +103,18 @@
         android:focusable="false"
         android:visibility="gone" />
 
+    <!-- Quick-play triangle, shown only by the Files tab; hidden elsewhere. -->
+    <ImageButton
+        android:id="@+id/rowPlay"
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:layout_marginStart="4dp"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:contentDescription="@string/action_play"
+        android:src="@drawable/ic_play"
+        android:visibility="gone"
+        app:tint="?attr/colorPrimary" />
+
     <ImageButton
         android:id="@+id/rowMore"
         android:layout_width="40dp"

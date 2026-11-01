@@ -45,7 +45,6 @@
                 android:id="@+id/filterChips"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                app:singleSelection="true"
                 app:singleLine="true" />
         </HorizontalScrollView>
 
@@ -168,5 +167,6 @@
         android:layout_margin="16dp"
         android:contentDescription="@string/settings_add_folder"
         android:src="@drawable/ic_folder"
+        android:visibility="gone"
         app:tint="?attr/colorOnPrimary" />
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

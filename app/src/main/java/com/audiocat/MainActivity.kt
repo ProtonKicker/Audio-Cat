@@ -34,6 +34,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var initialInsetsApplied = false
+    private var firstDrawAttempts = 0
 
     /** Shared with every page; a media controller connects to the service. */
     val player: PlayerConnection by lazy { PlayerConnection(this) }
@@ -59,6 +60,7 @@ class MainActivity : AppCompatActivity() {
 
         setUpPager()
         setUpBottomNav()
+        binding.pager.setCurrentItem(initialPage(), false)
         requestStoragePermission()
         warmUpPages()
     }
@@ -74,13 +76,7 @@ class MainActivity : AppCompatActivity() {
     private fun setUpWindowInsets() {
         ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
             val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            val changed = view.paddingLeft != bars.left ||
-                view.paddingTop != bars.top ||
-                view.paddingRight != bars.right ||
-                view.paddingBottom != bars.bottom
-            if (changed) {
-                view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            }
+            applyRootPadding(bars.left, bars.top, bars.right, bars.bottom)
             initialInsetsApplied = true
             insets
         }
@@ -88,12 +84,39 @@ class MainActivity : AppCompatActivity() {
         binding.root.viewTreeObserver.addOnPreDrawListener(
             object : ViewTreeObserver.OnPreDrawListener {
                 override fun onPreDraw(): Boolean {
-                    if (!initialInsetsApplied) return false
+                    if (!initialInsetsApplied) {
+                        val insets = ViewCompat.getRootWindowInsets(binding.root)
+                        if (insets != null) {
+                            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+                            applyRootPadding(bars.left, bars.top, bars.right, bars.bottom)
+                            initialInsetsApplied = true
+                        } else {
+                            firstDrawAttempts += 1
+                            if (firstDrawAttempts < MAX_FIRST_DRAW_ATTEMPTS) {
+                                ViewCompat.requestApplyInsets(binding.root)
+                                return false
+                            }
+                            // Some Android 10 builds never dispatch the first insets pass.
+                            // Falling back to the current zero-padding state is better than
+                            // leaving the whole activity blank forever.
+                            initialInsetsApplied = true
+                        }
+                    }
                     binding.root.viewTreeObserver.removeOnPreDrawListener(this)
                     return true
                 }
             },
         )
+    }
+
+    private fun applyRootPadding(left: Int, top: Int, right: Int, bottom: Int) {
+        val changed = binding.root.paddingLeft != left ||
+            binding.root.paddingTop != top ||
+            binding.root.paddingRight != right ||
+            binding.root.paddingBottom != bottom
+        if (changed) {
+            binding.root.setPadding(left, top, right, bottom)
+        }
     }
 
     /**
@@ -215,6 +238,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun initialPage(): Int =
+        intent?.getIntExtra(EXTRA_INITIAL_PAGE, PAGE_PLAYER)
+            ?.coerceIn(PAGE_PLAYER, PAGE_SETTINGS)
+            ?: PAGE_PLAYER
+
     /** Page adapter for the four fixed tabs. */
     private inner class PagerAdapter : FragmentStateAdapter(this) {
 
@@ -234,5 +262,7 @@ class MainActivity : AppCompatActivity() {
         const val PAGE_PLAYLIST = 1
         const val PAGE_FILES = 2
         const val PAGE_SETTINGS = 3
+        const val EXTRA_INITIAL_PAGE = "initial_page"
+        const val MAX_FIRST_DRAW_ATTEMPTS = 4
     }
 }

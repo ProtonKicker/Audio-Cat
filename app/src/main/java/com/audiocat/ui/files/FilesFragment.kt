@@ -10,6 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.audiocat.AudioCatApp
+import com.audiocat.MainActivity
 import com.audiocat.R
 import com.audiocat.data.db.FolderMode
 import com.audiocat.data.db.Track
@@ -49,10 +50,18 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
     /** Every row from the database, before the chip filter is applied. */
     private var allRows: List<FileRow> = emptyList()
 
-    private var filter = FilesFilter.ALL
-
-    /** Id of the chip matching [filter], kept so the group always has a pick. */
-    private var activeChipId = View.NO_ID
+    /**
+     * Multi-select chip state. "All" is the empty selection: it is reset to
+     * checked whenever no specific chip is on, and any specific chip turning
+     * on switches "All" off. Listed/Unlisted and Audio/Video are exclusive.
+     * The chips themselves are the single source of truth for the filter.
+     */
+    private var suppressChipEvents = false
+    private var chipAll: Chip? = null
+    private var chipListed: Chip? = null
+    private var chipUnlisted: Chip? = null
+    private var chipAudio: Chip? = null
+    private var chipVideo: Chip? = null
 
     private var selectionMode = false
     private val selectedPaths = linkedSetOf<String>()
@@ -85,6 +94,7 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
             onRowClick = ::onRowClicked,
             onRowLongClick = ::onRowLongPressed,
             onMoreClick = ::showActions,
+            onPlayClick = ::onPlayPressed,
         )
         views.filesList.layoutManager = LinearLayoutManager(requireContext())
         views.filesList.adapter = adapter
@@ -127,45 +137,88 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
     // ---------------------------------------------------------------------
 
     private fun buildFilters(views: FragmentFilesBinding) {
-        var initialChipId = View.NO_ID
-        FilesFilter.entries.forEach { option ->
-            val chip = Chip(requireContext()).apply {
-                id = View.generateViewId()
-                text = option.label
-                isCheckable = true
-                // The group listener reads the filter back out of the tag.
-                tag = option
-            }
-            views.filterChips.addView(chip)
-            if (option == filter) initialChipId = chip.id
-        }
-        views.filterChips.setOnCheckedStateChangeListener { group, checkedIds ->
-            val checkedId = checkedIds.firstOrNull()
-            if (checkedId == null) {
-                // Tapping the active chip clears it, but a filter is always
-                // active, so put the selection back.
-                group.check(activeChipId)
-            } else {
-                activeChipId = checkedId
-                val selected = group.findViewById<Chip>(checkedId)?.tag as? FilesFilter
-                    ?: return@setOnCheckedStateChangeListener
-                filter = selected
-                submitFiltered()
-            }
-        }
-        activeChipId = initialChipId
-        views.filterChips.check(initialChipId)
+        // "All" first so it is the initial (and fallback) selection. Every
+        // chip keeps its own check state; the rules below enforce the valid
+        // combinations: any specific chip turns All off, exclusivity holds
+        // within each pair, and an empty selection snaps back to All.
+        chipAll = addChip(views, FilesFilter.ALL).also { it.isChecked = true }
+        chipListed = addChip(views, FilesFilter.LISTED)
+        chipUnlisted = addChip(views, FilesFilter.UNLISTED)
+        chipAudio = addChip(views, FilesFilter.AUDIO)
+        chipVideo = addChip(views, FilesFilter.VIDEO)
     }
 
-    /** Applies the active chip in a single pass and updates the empty state. */
+    private fun addChip(views: FragmentFilesBinding, kind: FilesFilter): Chip =
+        Chip(requireContext()).apply {
+            id = View.generateViewId()
+            text = kind.label
+            isCheckable = true
+            setOnCheckedChangeListener { _, isChecked -> onFilterChipChanged(kind, isChecked) }
+            views.filterChips.addView(this)
+        }
+
+    /** Enforces the valid chip combinations after any user toggle. */
+    private fun onFilterChipChanged(changed: FilesFilter, isChecked: Boolean) {
+        if (suppressChipEvents) return
+        suppressChipEvents = true
+        try {
+            if (changed == FilesFilter.ALL) {
+                // Selecting All clears every specific chip; unchecking All only
+                // matters if nothing specific is left (All is re-selected then).
+                if (isChecked) {
+                    chipListed?.isChecked = false
+                    chipUnlisted?.isChecked = false
+                    chipAudio?.isChecked = false
+                    chipVideo?.isChecked = false
+                }
+            } else {
+                // Any specific choice leaves the All state.
+                chipAll?.isChecked = false
+                if (isChecked) {
+                    // Exclusive pairs: picking one clears the other.
+                    when (changed) {
+                        FilesFilter.LISTED -> chipUnlisted?.isChecked = false
+                        FilesFilter.UNLISTED -> chipListed?.isChecked = false
+                        FilesFilter.AUDIO -> chipVideo?.isChecked = false
+                        FilesFilter.VIDEO -> chipAudio?.isChecked = false
+                        else -> Unit
+                    }
+                }
+            }
+            // A filter is always active: with no specific chip on, All returns.
+            if (chipAll?.isChecked != true && specificChecked().isEmpty()) {
+                chipAll?.isChecked = true
+            }
+        } finally {
+            suppressChipEvents = false
+        }
+        submitFiltered()
+    }
+
+    /** The currently on specific chip types, if any (Listed/Unlisted/Audio/Video). */
+    private fun specificChecked(): Set<FilesFilter> = buildSet {
+        if (chipListed?.isChecked == true) add(FilesFilter.LISTED)
+        if (chipUnlisted?.isChecked == true) add(FilesFilter.UNLISTED)
+        if (chipAudio?.isChecked == true) add(FilesFilter.AUDIO)
+        if (chipVideo?.isChecked == true) add(FilesFilter.VIDEO)
+    }
+
+    /** Applies the selected chips in a single pass and updates the empty state. */
     private fun submitFiltered() {
         val views = binding ?: return
-        val rows = when (filter) {
-            FilesFilter.ALL -> allRows
-            FilesFilter.LISTED -> allRows.filter { !it.track.unlisted }
-            FilesFilter.UNLISTED -> allRows.filter { it.track.unlisted }
-            FilesFilter.AUDIO -> allRows.filter { !it.track.isVideo }
-            FilesFilter.VIDEO -> allRows.filter { it.track.isVideo }
+        val active = specificChecked()
+        val rows = allRows.filter { row ->
+            val okListing = when {
+                FilesFilter.LISTED in active -> !row.track.unlisted
+                FilesFilter.UNLISTED in active -> row.track.unlisted
+                else -> true
+            }
+            val okKind = when {
+                FilesFilter.AUDIO in active -> !row.track.isVideo
+                FilesFilter.VIDEO in active -> row.track.isVideo
+                else -> true
+            }
+            okListing && okKind
         }
         adapter.submitList(rows)
         views.filesEmpty.isVisible = rows.isEmpty()
@@ -198,6 +251,20 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
         if (selectionMode) toggleSelection(row) else showActions(row)
     }
 
+    /**
+     * Quick-play from the Files tab: plays the currently filtered list from
+     * [row] onward, matching the tap-to-play behaviour everywhere else.
+     */
+    private fun onPlayPressed(row: FileRow) {
+        val rows = adapter.currentList
+        val start = rows.indexOfFirst { it.path == row.path }.coerceAtLeast(0)
+        val tracks = rows.map { it.track }
+        if (tracks.isEmpty()) return
+        val activity = requireActivity() as MainActivity
+        activity.player.playTracks(tracks, start)
+        activity.showPlayer()
+    }
+
     private fun onRowLongPressed(row: FileRow) {
         if (selectionMode) {
             toggleSelection(row)
@@ -223,8 +290,8 @@ class FilesFragment : Fragment(R.layout.fragment_files) {
         val views = binding ?: return
         views.selectionBar.isVisible = selectionMode
         views.selectionCount.text = getString(R.string.files_selected, selectedPaths.size)
-        // The action bar occupies the FAB's corner while it is up.
-        views.fabAddFolder.isVisible = !selectionMode
+        // The "add folder" FAB is hidden (see its layout); it only ever toggled
+        // visibility around the selection bar, whose logic is kept for reuse.
         adapter.render(selectionMode, selectedPaths.toSet())
     }
 

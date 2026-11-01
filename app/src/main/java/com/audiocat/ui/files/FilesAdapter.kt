@@ -26,6 +26,7 @@ class FilesAdapter(
     private val onRowClick: (FileRow) -> Unit,
     private val onRowLongClick: (FileRow) -> Unit,
     private val onMoreClick: (FileRow) -> Unit,
+    private val onPlayClick: (FileRow) -> Unit,
 ) : ListAdapter<FileRow, FilesAdapter.RowHolder>(DIFF) {
 
     private var selectionMode = false
@@ -56,8 +57,10 @@ class FilesAdapter(
             binding.rowCheck.isVisible = selectionMode
             binding.rowCheck.isChecked = row.path in selectedPaths
             // Inside selection mode a tap already toggles the row, so the
-            // overflow menu would only get in the way.
+            // overflow menu and the quick-play triangle would only get in the
+            // way.
             binding.rowMore.isVisible = !selectionMode
+            binding.rowPlay.isVisible = !selectionMode
 
             val art = artworkOf(row)
             if (art == null) {
@@ -72,6 +75,7 @@ class FilesAdapter(
                 true
             }
             binding.rowMore.setOnClickListener { onMoreClick(row) }
+            binding.rowPlay.setOnClickListener { onPlayClick(row) }
         }
     }
 

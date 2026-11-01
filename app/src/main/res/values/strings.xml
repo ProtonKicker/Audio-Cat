@@ -75,7 +75,7 @@
     <string name="effects_enabled">Enable effects</string>
 
     <!-- Files -->
-    <string name="files_title">Scanned files</string>
+    <string name="files_title">Files</string>
     <string name="files_selected">%1$d selected</string>
     <string name="files_unlist">Unlist</string>
     <string name="files_relist">Relist</string>
@@ -130,7 +130,7 @@
 
     <!-- Settings -->
     <string name="settings_scan">Scanning</string>
-    <string name="settings_auto_scan">Auto-scan</string>
+    <string name="settings_auto_scan">Auto detect files</string>
     <string name="settings_auto_scan_summary">Refresh the library automatically when files change</string>
     <string name="settings_scan_now">Scan now</string>
     <string name="settings_full_rescan">Full rescan</string>

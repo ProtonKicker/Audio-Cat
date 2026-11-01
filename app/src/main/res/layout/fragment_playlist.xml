@@ -43,7 +43,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="@string/playlists_title"
-                android:textAppearance="?attr/textAppearanceTitleMedium" />
+                android:textAppearance="?attr/textAppearanceHeadlineSmall" />
 
             <!-- Search / sort / filter appear only inside a playlist view. -->
             <ImageButton
