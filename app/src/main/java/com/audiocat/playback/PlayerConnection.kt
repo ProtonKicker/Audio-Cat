@@ -70,11 +70,37 @@ class PlayerConnection(private val context: Context) {
     /** The running service, when it has been created in this process. */
     val service: PlaybackService? get() = PlaybackService.peek()
 
+    /** Reads the persisted session, used to seed the first frame of a cold start. */
+    private val snapshotStore by lazy { PlaybackStateStore(context.applicationContext) }
+
     private val playerListener = PlayerListener()
 
     init {
+        // A cold start has a restore window: the controller takes a moment to
+        // connect and the service then rebuilds the saved queue through a
+        // database lookup. Publishing the last session's snapshot up front means
+        // the first frame never renders "Nothing playing" ahead of the restored
+        // track - the authoritative state replaces it once the controller lands.
+        preseedFromSnapshot()
         connect()
         startPositionTicker()
+    }
+
+    /**
+     * Shows the previous session's queue before the service has restored it.
+     *
+     * Works off the persisted snapshot alone: the snapshot carries the media URI
+     * of every queue entry, so no database lookup is needed to know what was
+     * playing. Titles fall back to the file name until the library row arrives.
+     */
+    private fun preseedFromSnapshot() {
+        val snapshot = snapshotStore.load() ?: return
+        val provisional = QueueRestore.provisional(snapshot) ?: return
+        _queue.value = provisional
+        _currentTrack.value = provisional.current
+        _shuffle.value = provisional.shuffle
+        _repeat.value = provisional.repeat
+        _positionMs.value = snapshot.positionMs
     }
 
     private fun connect() {
@@ -118,6 +144,11 @@ class PlayerConnection(private val context: Context) {
     private fun syncAll() {
         val player = controller ?: return
         _isPlaying.value = player.isPlaying
+        // While a cold-start restore is in flight the player reports an empty
+        // timeline and a zero position; the provisional snapshot published by
+        // preseedFromSnapshot() stays up until the restore lands, so the real
+        // (empty) state is not read over it yet.
+        if (service?.restoringSnapshot == true && player.mediaItemCount == 0) return
         // The app manages shuffle by reordering the player's items (never by
         // setting native shuffleMode), so player.shuffleModeEnabled is always
         // false. Read the real state from the service's queue and only fall back
@@ -152,8 +183,13 @@ class PlayerConnection(private val context: Context) {
         val player = controller ?: return
         val paths = (0 until player.mediaItemCount).map { player.getMediaItemAt(it).mediaId }
         if (paths.isEmpty()) {
-            _queue.value = PlaybackQueue()
-            _currentTrack.value = null
+            // The timeline is also empty while the service is still rebuilding
+            // the saved session; keep the provisional snapshot so the UI does
+            // not flash "Nothing playing" before the restore arrives.
+            if (service?.restoringSnapshot != true) {
+                _queue.value = PlaybackQueue()
+                _currentTrack.value = null
+            }
             return
         }
         // Read shuffle from the service's queue model when available — the app

@@ -1,7 +1,7 @@
 # Audio Cat — 任务板与项目状态
 
-> 最后更新：2026-10-17  
-> 当前版本：1.1.2（开发中）  
+> 最后更新：2026-10-31  
+> 当前版本：1.1.3（开发中）  
 > 包名：`com.audiocat.debug`（applicationIdSuffix `.debug`）
 
 ---
@@ -59,6 +59,11 @@ Audio Cat 是一款轻量级、完全离线的 Android 音频播放器，专为�
 **根因**：`volumeOf()` 固定取 segments[1] 和 segments[2]，当 SD 卡路径嵌套 >3 段时返回错误的 mount point。  
 **修复**：重写为正确区分内部存储和可移动存储。
 
+### Bug 7 — 冷启动短暂显示"Nothing playing"
+**现象**：App 冷启动约 0.5s 内界面显示"没有正在播放"，随后才切回上次播放的歌曲。  
+**根因**：MediaController 连接和 service 恢复队列（含数据库查询）是异步的，期间 player timeline 为空，`refreshQueue()` 会把 `currentTrack` 置空，界面就渲染空态。  
+**修复**：`PlayerConnection` 启动时同步预填上次会话快照（`QueueRestore.provisional`），空 timeline 时若 `restoringSnapshot` 为真则不清空状态；快照同时保存 title/artist，首帧即显示真实元数据。
+
 ---
 
 ## 已实现的新功能 🎯
@@ -75,6 +80,7 @@ Audio Cat 是一款轻量级、完全离线的 Android 音频播放器，专为�
 
 ## 待手动验证（在 Redmi Turbo 4 Pro 上）🔴
 
+- [x] **冷启动恢复**：杀掉进程重启后立即显示上次歌曲，无"Nothing playing"闪屏（Redmi Turbo 4 Pro）
 - [ ] **开关切换**：所有设置开关正常工作
 - [ ] **切歌自动播放**：切歌始终自动播放
 - [ ] **封面加载**：扫描后封面正常显示

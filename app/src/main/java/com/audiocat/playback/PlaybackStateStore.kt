@@ -2,6 +2,7 @@ package com.audiocat.playback
 
 import android.content.Context
 import android.util.Log
+import com.audiocat.data.RepeatMode
 import com.audiocat.data.db.Track
 import org.json.JSONArray
 import org.json.JSONObject
@@ -25,7 +26,12 @@ class PlaybackStateStore(context: Context) {
     private val backupFile = File(context.filesDir, "$FILE_NAME.bak")
 
     /** One queue entry as stored on disk. */
-    data class Item(val path: String, val uri: String)
+    data class Item(
+        val path: String,
+        val uri: String,
+        val title: String = "",
+        val artist: String? = null,
+    )
 
     /** Snapshot of a previous session. */
     data class Snapshot(
@@ -50,6 +56,11 @@ class PlaybackStateStore(context: Context) {
                     JSONObject()
                         .put(KEY_ITEM_PATH, track.path)
                         .put(KEY_ITEM_URI, track.uri)
+                        // Duplicated so a cold start can show the real title in
+                        // the first frame instead of falling back to the file
+                        // name while the restore looks the library row up.
+                        .put(KEY_ITEM_TITLE, track.title)
+                        .apply { track.artist?.let { put(KEY_ITEM_ARTIST, it) } }
                 }),
             )
             // The cursor is stored as a position within the *saved* order so a
@@ -115,7 +126,14 @@ class PlaybackStateStore(context: Context) {
             for (index in 0 until array.length()) {
                 val entry = array.optJSONObject(index) ?: continue
                 val path = entry.optString(KEY_ITEM_PATH)
-                if (path.isNotBlank()) items += Item(path, entry.optString(KEY_ITEM_URI))
+                if (path.isNotBlank()) {
+                    items += Item(
+                        path = path,
+                        uri = entry.optString(KEY_ITEM_URI),
+                        title = entry.optString(KEY_ITEM_TITLE),
+                        artist = entry.optString(KEY_ITEM_ARTIST).ifBlank { null },
+                    )
+                }
             }
             return items
         }
@@ -140,6 +158,8 @@ class PlaybackStateStore(context: Context) {
         const val KEY_ITEMS = "items"
         const val KEY_ITEM_PATH = "path"
         const val KEY_ITEM_URI = "uri"
+        const val KEY_ITEM_TITLE = "title"
+        const val KEY_ITEM_ARTIST = "artist"
         const val KEY_PATHS = "paths"
         const val KEY_POSITION_IN_QUEUE = "cursor"
         const val KEY_POSITION_MS = "positionMs"
@@ -182,7 +202,8 @@ object QueueRestore {
             row ?: Track(
                 path = item.path,
                 uri = uri,
-                title = item.path.substringAfterLast('/'),
+                title = item.title.ifBlank { item.path.substringAfterLast('/') },
+                artist = item.artist,
             )
         }
         if (tracks.isEmpty()) return null
@@ -192,4 +213,27 @@ object QueueRestore {
             ?: cursor.coerceIn(0, tracks.lastIndex)
         return Plan(tracks, restoredCursor)
     }
+
+    /**
+     * Builds the queue to display before the service has finished restoring.
+     *
+     * The restore goes through a database lookup that takes a moment, so on a
+     * cold start the UI would otherwise render "Nothing playing" and then flip
+     * to the real track once the restore lands. The snapshot alone is enough to
+     * show what was playing - titles fall back to the file name until the
+     * library row replaces them.
+     */
+    fun provisional(snapshot: PlaybackStateStore.Snapshot): PlaybackQueue? =
+        plan(snapshot.items, snapshot.cursor, emptyMap())
+            ?.takeIf { it.tracks.isNotEmpty() }
+            ?.let { plan ->
+                PlaybackQueue(
+                    tracks = plan.tracks,
+                    order = plan.tracks.indices.toList(),
+                    cursor = plan.cursor,
+                    shuffle = snapshot.shuffle,
+                    repeat = runCatching { RepeatMode.valueOf(snapshot.repeat) }
+                        .getOrDefault(RepeatMode.OFF),
+                )
+            }
 }

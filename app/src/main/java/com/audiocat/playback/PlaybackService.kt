@@ -72,6 +72,16 @@ class PlaybackService : MediaSessionService() {
     internal var queue: PlaybackQueue = PlaybackQueue()
         private set
 
+    /**
+     * Set while [restoreQueue] is rebuilding the previous session.
+     *
+     * The player's timeline is empty until the restore lands, so this lets the
+     * UI tell "a restore is in flight" apart from "nothing is playing" and keep
+     * showing the saved session instead of flashing the empty state.
+     */
+    @Volatile
+    internal var restoringSnapshot = false
+
     /** Audio effects bound to the player's output session. */
     val effects = EffectsEngine()
 
@@ -622,23 +632,39 @@ class PlaybackService : MediaSessionService() {
      */
     private fun restoreQueue() {
         val snapshot = stateStore.load() ?: return
+        // The timeline is empty until this coroutine finishes, so the flag tells
+        // the UI that the emptiness is a restore in flight rather than nothing
+        // to play.
+        restoringSnapshot = true
         scope.launch {
-            val rows = database.trackDao().byPaths(snapshot.paths).associateBy { it.path }
-            val plan = QueueRestore.plan(snapshot.items, snapshot.cursor, rows) ?: return@launch
-            val restored = PlaybackQueue(
-                tracks = plan.tracks,
-                order = plan.tracks.indices.toList(),
-                cursor = plan.cursor,
-                shuffle = snapshot.shuffle,
-                repeat = runCatching { RepeatMode.valueOf(snapshot.repeat) }
-                    .getOrDefault(RepeatMode.OFF),
-            )
-            queue = restored
-            val player = player ?: return@launch
-            player.setMediaItems(plan.tracks.map { it.toMediaItem() }, plan.cursor, snapshot.positionMs)
-            player.prepare()
-            // Keep the restored queue's repeat mode consistent with settings.
-            setRepeat(settings.current.repeatMode)
+            try {
+                val rows = database.trackDao().byPaths(snapshot.paths).associateBy { it.path }
+                val plan = QueueRestore.plan(snapshot.items, snapshot.cursor, rows)
+                if (plan == null) {
+                    // Nothing playable came back (e.g. a snapshot written by an
+                    // older build). Drop any provisional state the UI may still
+                    // be showing so it reflects the now-known-empty session.
+                    restoringSnapshot = false
+                    player?.setMediaItems(emptyList())
+                    return@launch
+                }
+                val restored = PlaybackQueue(
+                    tracks = plan.tracks,
+                    order = plan.tracks.indices.toList(),
+                    cursor = plan.cursor,
+                    shuffle = snapshot.shuffle,
+                    repeat = runCatching { RepeatMode.valueOf(snapshot.repeat) }
+                        .getOrDefault(RepeatMode.OFF),
+                )
+                queue = restored
+                val player = player ?: return@launch
+                player.setMediaItems(plan.tracks.map { it.toMediaItem() }, plan.cursor, snapshot.positionMs)
+                player.prepare()
+                // Keep the restored queue's repeat mode consistent with settings.
+                setRepeat(settings.current.repeatMode)
+            } finally {
+                restoringSnapshot = false
+            }
         }
     }
 

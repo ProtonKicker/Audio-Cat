@@ -1,5 +1,6 @@
 package com.audiocat.playback
 
+import com.audiocat.data.RepeatMode
 import com.audiocat.data.db.Track
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -106,5 +107,55 @@ class QueueRestoreTest {
     @Test
     fun `an empty snapshot restores nothing`() {
         assertNull(QueueRestore.plan(emptyList(), cursor = 0, rows = emptyMap()))
+    }
+
+    // ---------------------------------------------------------------------
+    // Provisional queue used to seed the first frame of a cold start
+    // ---------------------------------------------------------------------
+
+    @Test
+    fun `a provisional queue is built from the snapshot alone, without the database`() {
+        val snapshot = PlaybackStateStore.Snapshot(
+            items = listOf(
+                item("/m/a.mp3"),
+                item("/m/b.mp3"),
+                PlaybackStateStore.Item("/m/c.mp3", "content:///m/c.mp3", title = "C Song", artist = "C Artist"),
+            ),
+            cursor = 2,
+            positionMs = 15_000L,
+            shuffle = true,
+            repeat = "ALL",
+        )
+
+        val queue = QueueRestore.provisional(snapshot)!!
+
+        assertEquals(3, queue.size)
+        assertEquals("/m/c.mp3", queue.current?.path)
+        // The snapshot duplicates the title so the first frame already shows it.
+        assertEquals("C Song", queue.current?.title)
+        assertEquals("C Artist", queue.current?.artist)
+        assertTrue(queue.shuffle)
+        assertEquals(RepeatMode.ALL, queue.repeat)
+    }
+
+    @Test
+    fun `the snapshot title fills a queue entry that lost its library row`() {
+        val items = listOf(PlaybackStateStore.Item("/m/gone.mp3", "content://gone", title = "Gone Song"))
+        val plan = QueueRestore.plan(items, cursor = 0, rows = emptyMap())!!
+
+        assertEquals("Gone Song", plan.tracks.first().title)
+    }
+
+    @Test
+    fun `a provisional queue is empty when the snapshot has nothing playable`() {
+        val snapshot = PlaybackStateStore.Snapshot(
+            items = listOf(item("/m/gone.mp3", uri = "")),
+            cursor = 0,
+            positionMs = 0L,
+            shuffle = false,
+            repeat = "OFF",
+        )
+
+        assertNull(QueueRestore.provisional(snapshot))
     }
 }

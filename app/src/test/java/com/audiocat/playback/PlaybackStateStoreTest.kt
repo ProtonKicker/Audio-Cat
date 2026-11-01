@@ -72,6 +72,15 @@ class PlaybackStateStoreTest {
     }
 
     @Test
+    fun `the snapshot keeps the title and artist so the first frame shows real metadata`() {
+        store.save(queue(), positionMs = 0L)
+
+        val snapshot = store.load()!!
+        assertEquals(listOf("T2", "T0", "T1"), snapshot.items.map { it.title })
+        assertEquals(listOf(null, null, null), snapshot.items.map { it.artist })
+    }
+
+    @Test
     fun `load returns null when nothing was saved`() {
         assertNull(store.load())
     }
