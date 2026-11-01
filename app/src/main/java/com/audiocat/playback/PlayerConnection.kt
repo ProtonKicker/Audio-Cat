@@ -104,6 +104,10 @@ class PlayerConnection(private val context: Context) {
         _shuffle.value = provisional.shuffle
         _repeat.value = provisional.repeat
         _positionMs.value = snapshot.positionMs
+        // Duration is restored too, otherwise the seek bar cannot place itself
+        // until the player reports the track length - the first frame would show
+        // it at the left and then spring to the saved position.
+        _durationMs.value = snapshot.durationMs
     }
 
     private fun connect() {
@@ -138,6 +142,13 @@ class PlayerConnection(private val context: Context) {
                 // seek bar would freeze at its last value forever.
                 runCatching {
                     val player = controller ?: return@runCatching
+                    // While a cold-start restore is in flight the timeline is
+                    // still empty and currentPosition reads as zero; hold the
+                    // provisional snapshot position instead so the seek bar
+                    // never flashes to the left and then jumps back.
+                    if (service?.restoringSnapshot == true && player.mediaItemCount == 0) {
+                        return@runCatching
+                    }
                     _positionMs.value = player.currentPosition
                 }
             }
@@ -392,7 +403,13 @@ class PlayerConnection(private val context: Context) {
             // The new item starts from zero; publishing that immediately keeps
             // the seek bar from showing the previous track's position for a
             // tick (or forever, if the poll raced the transition).
-            _positionMs.value = 0L
+            // A cold-start restore also lands through a playlist change, but the
+            // item is not new - it resumes at the saved position, so zeroing here
+            // would fight the provisional seed. The service keeps a dedicated
+            // flag for exactly that window.
+            if (service?.restoringSnapshot != true) {
+                _positionMs.value = 0L
+            }
             _durationMs.value = controller?.duration?.coerceAtLeast(0L) ?: 0L
             refreshQueue()
         }

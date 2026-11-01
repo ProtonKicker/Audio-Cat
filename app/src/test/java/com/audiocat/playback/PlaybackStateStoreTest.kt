@@ -50,12 +50,13 @@ class PlaybackStateStoreTest {
 
     @Test
     fun `save then load round-trips the visible state`() {
-        store.save(queue(), positionMs = 4_321L)
+        store.save(queue(), positionMs = 4_321L, durationMs = 123_456L)
 
         val snapshot = store.load()!!
         assertEquals(listOf("/m/t2.mp3", "/m/t0.mp3", "/m/t1.mp3"), snapshot.paths)
         assertEquals(1, snapshot.cursor)
         assertEquals(4_321L, snapshot.positionMs)
+        assertEquals(123_456L, snapshot.durationMs)
         assertTrue(snapshot.shuffle)
         assertEquals("ALL", snapshot.repeat)
     }
@@ -128,6 +129,9 @@ class PlaybackStateStoreTest {
         assertEquals(listOf("/m/t0.mp3", "/m/t1.mp3"), snapshot.paths)
         assertEquals(1, snapshot.cursor)
         assertEquals(900L, snapshot.positionMs)
+        // Older snapshots predate the duration field; zero keeps the seek bar
+        // behaviour unchanged rather than fabricating a wrong length.
+        assertEquals(0L, snapshot.durationMs)
         assertEquals("", snapshot.items.first().uri)
     }
 

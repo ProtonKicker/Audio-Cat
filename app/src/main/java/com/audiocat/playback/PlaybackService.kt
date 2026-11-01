@@ -617,7 +617,7 @@ class PlaybackService : MediaSessionService() {
             // good. Only an explicit "clear queue" removes it.
             return
         }
-        stateStore.save(queue, player.currentPosition)
+        stateStore.save(queue, player.currentPosition, player.duration.coerceAtLeast(0L))
     }
 
     /**

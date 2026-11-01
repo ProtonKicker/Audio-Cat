@@ -1,7 +1,7 @@
 # Audio Cat — 任务板与项目状态
 
 > 最后更新：2026-11-01  
-> 当前版本：1.1.6（已发布）  
+> 当前版本：1.1.7（已发布）  
 > 包名：`com.audiocat`（release） / `com.audiocat.debug`（applicationIdSuffix `.debug`）
 
 ---
@@ -68,6 +68,17 @@ Audio Cat 是一款轻量级、完全离线的 Android 音频播放器，专为�
 **现象**：App 冷启动时 Player/Playlist/Files/Settings 四个底部导航图标先显示在偏高的位置，随后下沉到最终位置。  
 **根因**：Material `BottomNavigationView` 的选中态"active indicator"（选中项背板/胶囊）比图标晚一步初始化，其出现时改变 item 内部布局高度，把图标整体下推（实测冷启动首帧 iconTop=0，约 500ms 后变为 13）。  
 **修复**：`MainActivity.setUpBottomNav()` 中调用 `binding.bottomNav.isItemActiveIndicatorEnabled = false` 禁用该指示器，消除延迟布局变化。设备验证：冷启动 dump1（启动即抓取）与 dump2（+800ms）nav/icon/label 的 bounds 完全一致，无跳动。权衡：选中项不再显示背板胶囊，仅靠图标与文字颜色区分。
+
+### Bug 9 — 冷启动进度条先归零再跳回上次位置
+**现象**：App 冷启动时播放进度条先停在最左端（0），随后才跳到最后播放到的位置。  
+**根因**：快照只保存了 `positionMs`，未保存 `durationMs`。首帧预填只有位置没有时长，UI 的 `if (duration > 0)` 守卫判定时长为 0，进度条停在 0；同时位置 ticker 每 500ms 用 `player.currentPosition` 覆盖状态，而恢复窗口内 timeline 为空、currentPosition 读为 0，把预填位置也归零；恢复完成后时长/位置就位，进度条一次性跳到正确位置。  
+**修复**：
+- `PlaybackStateStore` 快照新增持久化 `durationMs`，`PlaybackService.persistState()` 保存时长
+- `PlayerConnection.preseedFromSnapshot()` 同时预填位置与时长，首帧即可把进度条放到正确位置
+- 位置 ticker 增加恢复窗口守卫（`restoringSnapshot && mediaItemCount == 0` 时跳过，不覆盖预填位置）
+- `onMediaItemTransition` 在恢复窗口内不把位置归零（恢复会以新 playlist 触发该回调）
+- 兼容旧快照：缺少 `durationMs` 字段时按 0 处理，行为与旧版一致
+**验证**：debug 设备读写 seed 快照（positionMs=42000/durationMs=180000）冷启动，UI dump 首帧即显示 `bigPosition=0:42`、`bigDuration=4:24`，不再是 0:00。
 
 ---
 

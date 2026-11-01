@@ -38,6 +38,7 @@ class PlaybackStateStore(context: Context) {
         val items: List<Item>,
         val cursor: Int,
         val positionMs: Long,
+        val durationMs: Long = 0L,
         val shuffle: Boolean,
         val repeat: String,
     ) {
@@ -48,7 +49,7 @@ class PlaybackStateStore(context: Context) {
         val currentPath: String? get() = items.getOrNull(cursor)?.path
     }
 
-    fun save(queue: PlaybackQueue, positionMs: Long) {
+    fun save(queue: PlaybackQueue, positionMs: Long, durationMs: Long = 0L) {
         val payload = JSONObject().apply {
             put(
                 KEY_ITEMS,
@@ -67,6 +68,10 @@ class PlaybackStateStore(context: Context) {
             // shuffled queue resumes on the same track.
             put(KEY_POSITION_IN_QUEUE, queue.cursor)
             put(KEY_POSITION_MS, positionMs)
+            // The duration is persisted so the cold-start first frame can place
+            // the seek bar exactly where playback was, instead of starting from
+            // zero until the player finishes restoring and reports its length.
+            put(KEY_DURATION_MS, durationMs)
             put(KEY_SHUFFLE, queue.shuffle)
             put(KEY_REPEAT, queue.repeat.name)
         }
@@ -110,6 +115,7 @@ class PlaybackStateStore(context: Context) {
             items = items,
             cursor = json.optInt(KEY_POSITION_IN_QUEUE, 0),
             positionMs = json.optLong(KEY_POSITION_MS, 0L),
+            durationMs = json.optLong(KEY_DURATION_MS, 0L),
             shuffle = json.optBoolean(KEY_SHUFFLE, false),
             repeat = json.optString(KEY_REPEAT, "OFF"),
         )
@@ -163,6 +169,7 @@ class PlaybackStateStore(context: Context) {
         const val KEY_PATHS = "paths"
         const val KEY_POSITION_IN_QUEUE = "cursor"
         const val KEY_POSITION_MS = "positionMs"
+        const val KEY_DURATION_MS = "durationMs"
         const val KEY_SHUFFLE = "shuffle"
         const val KEY_REPEAT = "repeat"
     }
