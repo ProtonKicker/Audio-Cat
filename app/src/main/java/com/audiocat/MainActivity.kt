@@ -4,9 +4,13 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.view.ViewTreeObserver
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.doOnAttach
 import androidx.core.view.doOnPreDraw
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.audiocat.databinding.ActivityMainBinding
@@ -29,6 +33,7 @@ import kotlinx.coroutines.launch
 class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
+    private var initialInsetsApplied = false
 
     /** Shared with every page; a media controller connects to the service. */
     val player: PlayerConnection by lazy { PlayerConnection(this) }
@@ -50,19 +55,45 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        // The pager draws behind the system bars; keep content clear of them.
-        androidx.core.view.ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
-            val bars = insets.getInsets(
-                androidx.core.view.WindowInsetsCompat.Type.systemBars(),
-            )
-            view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
-            insets
-        }
+        setUpWindowInsets()
 
         setUpPager()
         setUpBottomNav()
         requestStoragePermission()
         warmUpPages()
+    }
+
+    /**
+     * Applies the final system-bar padding before the first frame is allowed to draw.
+     *
+     * On a cold start the first layout can happen before window insets reach the
+     * root view, which makes the bottom navigation measure once in a temporary
+     * position and then jump when the inset padding arrives. Holding the very
+     * first draw until the first inset pass lands keeps the bar stable.
+     */
+    private fun setUpWindowInsets() {
+        ViewCompat.setOnApplyWindowInsetsListener(binding.root) { view, insets ->
+            val bars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
+            val changed = view.paddingLeft != bars.left ||
+                view.paddingTop != bars.top ||
+                view.paddingRight != bars.right ||
+                view.paddingBottom != bars.bottom
+            if (changed) {
+                view.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+            }
+            initialInsetsApplied = true
+            insets
+        }
+        binding.root.doOnAttach { ViewCompat.requestApplyInsets(it) }
+        binding.root.viewTreeObserver.addOnPreDrawListener(
+            object : ViewTreeObserver.OnPreDrawListener {
+                override fun onPreDraw(): Boolean {
+                    if (!initialInsetsApplied) return false
+                    binding.root.viewTreeObserver.removeOnPreDrawListener(this)
+                    return true
+                }
+            },
+        )
     }
 
     /**
@@ -77,7 +108,9 @@ class MainActivity : AppCompatActivity() {
         binding.root.doOnPreDraw {
             // Deferred past this frame: raising the limit instantiates the
             // remaining fragments, which must not happen inside the draw pass.
-            binding.pager.post { binding.pager.offscreenPageLimit = PAGE_COUNT - 1 }
+            binding.pager.post {
+                binding.pager.offscreenPageLimit = PAGE_COUNT - 1
+            }
         }
     }
 
@@ -90,10 +123,12 @@ class MainActivity : AppCompatActivity() {
         // never be given a limit >= the item count: it layout-loops and the
         // pages stop rendering.
         binding.pager.offscreenPageLimit = 1
-        binding.pager.isUserInputEnabled = false
+        // Tabs can also be changed with a left/right swipe on open page space.
+        binding.pager.isUserInputEnabled = true
     }
 
     private fun setUpBottomNav() {
+        binding.bottomNav.isItemActiveIndicatorEnabled = false
         binding.bottomNav.setOnItemSelectedListener { item ->
             // MenuItem.getOrder() is 0 unless declared in XML, so map ids
             // explicitly to pager positions.
