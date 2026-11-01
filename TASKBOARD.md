@@ -1,7 +1,7 @@
 # Audio Cat — 任务板与项目状态
 
 > 最后更新：2026-10-31  
-> 当前版本：1.1.4（开发中）  
+> 当前版本：1.1.5（开发中）  
 > 包名：`com.audiocat.debug`（applicationIdSuffix `.debug`）
 
 ---
@@ -78,6 +78,9 @@ Audio Cat 是一款轻量级、完全离线的 Android 音频播放器，专为�
 
 ### 功能 3 — 冷启动性能优化
 播放快照 JSON（约 34KB / 520 条）由 `AudioCatApp.onCreate` 在 IO 线程预热解析一次，`PlayerConnection` 的预填首帧与 `PlaybackService` 的队列恢复都复用这份缓存，首帧主线程不再解析 JSON，launch 时间约 900ms（无可见回归）。
+
+### 功能 4 — 首帧只构建前两页，其余页在首帧后预热
+ViewPager2 原本在首帧前就把 4 个 Tab 页全部构建+布局（Files/Settings 最重），约占冷启动 200ms+。现在首帧只构建 Player/Playlist 两页，`doOnPreDraw` 在首帧绘制完成后把 `offscreenPageLimit` 升回 3 预热其余页。实测 Redmi Turbo 4 Pro 冷启动 TotalTime 从 ~880-950ms 降到 ~656-713ms（-25%），首帧后约 270ms 内四页全部就绪，Tab 切换依旧即时。
 
 ---
 

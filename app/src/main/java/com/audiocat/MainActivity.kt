@@ -7,6 +7,7 @@ import android.os.Bundle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnPreDraw
 import androidx.viewpager2.adapter.FragmentStateAdapter
 import com.audiocat.databinding.ActivityMainBinding
 import com.audiocat.playback.PlayerConnection
@@ -61,14 +62,34 @@ class MainActivity : AppCompatActivity() {
         setUpPager()
         setUpBottomNav()
         requestStoragePermission()
+        warmUpPages()
+    }
+
+    /**
+     * Builds the tab pages the cold start skipped, right after the first frame.
+     *
+     * The pager starts with a small offscreen limit so the first draw only lays
+     * out the Player and Playlist pages; the Files and Settings pages are
+     * created one frame later by raising the limit. After that point every page
+     * stays warm, so switching tabs remains a no-op exactly like before.
+     */
+    private fun warmUpPages() {
+        binding.root.doOnPreDraw {
+            // Deferred past this frame: raising the limit instantiates the
+            // remaining fragments, which must not happen inside the draw pass.
+            binding.pager.post { binding.pager.offscreenPageLimit = PAGE_COUNT - 1 }
+        }
     }
 
     private fun setUpPager() {
         binding.pager.adapter = PagerAdapter()
-        // Keeps every page warm so switching tabs is a no-op. ViewPager2 must
+        // The cold start only lays out the Player and Playlist pages; the rest
+        // are warmed one frame after the first draw (see the pre-draw hook in
+        // onCreate). This keeps the very first frame cheap without giving up
+        // instant tab switching once the pages have been warmed. ViewPager2 must
         // never be given a limit >= the item count: it layout-loops and the
         // pages stop rendering.
-        binding.pager.offscreenPageLimit = PAGE_COUNT - 1
+        binding.pager.offscreenPageLimit = 1
         binding.pager.isUserInputEnabled = false
     }
 
