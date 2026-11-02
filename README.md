@@ -34,6 +34,23 @@ version 1.1.8, with a real 520-track library.*
 *Privacy: the system status bar is cropped, and the track titles, artist names and cover
 artwork that came from the test phone's own media are mosaicked. Nothing personal is shown.*
 
+## Installing
+
+Grab the signed release APK from the
+[GitHub release](https://github.com/ProtonKicker/Audio-Cat/releases/tag/v1.1.8) and install
+it:
+
+```bash
+adb install -r AudioCat_v1.1.8.apk
+```
+
+Or copy the APK to the phone and open it (allow "install unknown apps" for your file manager
+if prompted).
+
+The app asks for media access the first time you launch it — it needs
+`READ_MEDIA_AUDIO` / `READ_MEDIA_VIDEO` to index your library. It declares **no
+`android.permission.INTERNET`**, so it cannot phone home even if it wanted to.
+
 ## Features
 
 The app is a single-activity shell ([MainActivity.kt](app/src/main/java/com/audiocat/MainActivity.kt)) with four fixed tabs backed by a `ViewPager2`.
