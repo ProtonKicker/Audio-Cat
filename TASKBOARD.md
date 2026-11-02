@@ -1,7 +1,7 @@
 # Audio Cat — 任务板与项目状态
 
 > 最后更新：2026-11-01  
-> 当前版本：1.1.7（已发布）  
+> 当前版本：1.1.8（已发布）  
 > 包名：`com.audiocat`（release） / `com.audiocat.debug`（applicationIdSuffix `.debug`）
 
 ---
